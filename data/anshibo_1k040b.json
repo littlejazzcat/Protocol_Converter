@@ -1,0 +1,3500 @@
+{
+  "meta": {
+    "protocol_name": "安世博 UAA-1K040B-E CAN通信协议",
+    "protocol_id": "anshibo_1k040b",
+    "version": "S1",
+    "standard": "上海安世博能源科技有限公司",
+    "baud_rate": 125000,
+    "frame_format": "CAN_2.0B_EXTENDED"
+  },
+  "can_id_schema": {
+    "total_bits": 29,
+    "fields": [
+      {
+        "name": "protocol",
+        "bit_start": 25,
+        "bit_len": 4,
+        "fixed_value": 1,
+        "description": "协议号"
+      },
+      {
+        "name": "monitor_address",
+        "bit_start": 21,
+        "bit_len": 4,
+        "description": "监控地址"
+      },
+      {
+        "name": "module_address",
+        "bit_start": 14,
+        "bit_len": 7,
+        "description": "模块地址"
+      },
+      {
+        "name": "production_day",
+        "bit_start": 9,
+        "bit_len": 5,
+        "description": "生产日期(可选)"
+      },
+      {
+        "name": "serial_number_low",
+        "bit_start": 0,
+        "bit_len": 9,
+        "description": "序列号低位(可选)"
+      }
+    ],
+    "message_identifier": "data_field",
+    "identifier_field": "command_type",
+    "identifier_byte": 1
+  },
+  "addresses": {
+    "MONITOR": {
+      "value": 1,
+      "name": "监控器",
+      "range": "0x01~0x0F"
+    },
+    "BROADCAST": {
+      "value": 0,
+      "name": "广播地址"
+    }
+  },
+  "encoding_rules": {
+    "default_byte_order": "big_endian",
+    "undefined_bit_fill": 1
+  },
+  "message_matcher": {
+    "type": "data_field",
+    "match_field": "command_type",
+    "match_byte": 2,
+    "aux_field": "message_type",
+    "aux_byte": 1,
+    "aux_nibble": "low"
+  },
+  "message_groups": [
+    {
+      "name": "读取请求",
+      "messages": [
+        "CMD_00_REQ",
+        "CMD_01_REQ",
+        "CMD_08_REQ",
+        "CMD_20_REQ",
+        "CMD_21_REQ",
+        "CMD_22_REQ",
+        "CMD_30_REQ",
+        "CMD_61_REQ",
+        "CMD_96_REQ",
+        "CMD_101_REQ",
+        "CMD_104_REQ",
+        "CMD_105_REQ",
+        "CMD_107_REQ",
+        "CMD_114_REQ",
+        "CMD_120_REQ",
+        "CMD_121_REQ",
+        "CMD_122_REQ",
+        "CMD_123_REQ",
+        "CMD_125_REQ",
+        "CMD_126_REQ"
+      ]
+    },
+    {
+      "name": "读取应答",
+      "messages": [
+        "CMD_00_RESP",
+        "CMD_01_RESP",
+        "CMD_08_RESP",
+        "CMD_20_RESP",
+        "CMD_21_RESP",
+        "CMD_22_RESP",
+        "CMD_30_RESP",
+        "CMD_61_RESP",
+        "CMD_96_RESP",
+        "CMD_101_RESP",
+        "CMD_104_RESP",
+        "CMD_105_RESP",
+        "CMD_107_RESP",
+        "CMD_114_RESP",
+        "CMD_120_RESP",
+        "CMD_121_RESP",
+        "CMD_122_RESP",
+        "CMD_123_RESP",
+        "CMD_125_RESP",
+        "CMD_126_RESP"
+      ]
+    },
+    {
+      "name": "设置请求",
+      "messages": [
+        "CMD_02_REQ",
+        "CMD_03_REQ",
+        "CMD_04_REQ",
+        "CMD_62_REQ",
+        "CMD_95_REQ"
+      ]
+    },
+    {
+      "name": "设置应答",
+      "messages": [
+        "CMD_02_RESP",
+        "CMD_03_RESP",
+        "CMD_04_RESP",
+        "CMD_62_RESP",
+        "CMD_95_RESP"
+      ]
+    },
+    {
+      "name": "特殊(组地址/拓展/序列号)",
+      "messages": [
+        "CMD_05_REQ",
+        "CMD_05_RESP",
+        "CMD_89_SET_REQ",
+        "CMD_89_SET_RESP",
+        "CMD_89_READ_REQ",
+        "CMD_89_READ_RESP",
+        "CMD_127_SET_REQ",
+        "CMD_127_SET_RESP",
+        "CMD_127_READ_REQ",
+        "CMD_127_READ_RESP"
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "name": "读取模块输出电压 [请求]",
+      "abbr": "CMD_00_REQ",
+      "identifier": {
+        "command_type": 0
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x00)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "读取模块输出电压 [应答]",
+      "abbr": "CMD_00_RESP",
+      "identifier": {
+        "command_type": 0
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x00)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "模块输出电压",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mV",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "读取模块输出电流 [请求]",
+      "abbr": "CMD_01_REQ",
+      "identifier": {
+        "command_type": 1
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x01)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "读取模块输出电流 [应答]",
+      "abbr": "CMD_01_RESP",
+      "identifier": {
+        "command_type": 1
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x01)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "模块输出电流",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mA",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "模块状态标志位 [请求]",
+      "abbr": "CMD_08_REQ",
+      "identifier": {
+        "command_type": 8
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x08)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 8
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "模块状态标志位 [应答]",
+      "abbr": "CMD_08_RESP",
+      "identifier": {
+        "command_type": 8
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x08)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 8
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "交流输入过压",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        },
+        {
+          "name": "交流输入欠压",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 1,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        },
+        {
+          "name": "交流过压脱离",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 2,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        },
+        {
+          "name": "PFC过压",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 3,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        },
+        {
+          "name": "PFC欠压",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 4,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        },
+        {
+          "name": "PFC不平衡",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 5,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        },
+        {
+          "name": "直流输出过压",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 6,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        },
+        {
+          "name": "直流过压关机",
+          "byte_start": 5,
+          "length": 1,
+          "bit_start": 7,
+          "bit_len": 1,
+          "data_type": "bits",
+          "enum": {
+            "0": "正常",
+            "1": "异常"
+          },
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "线电压AB [请求]",
+      "abbr": "CMD_20_REQ",
+      "identifier": {
+        "command_type": 20
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x14)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 20
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "线电压AB [应答]",
+      "abbr": "CMD_20_RESP",
+      "identifier": {
+        "command_type": 20
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x14)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 20
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "线电压AB",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mV",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "进风口温度 [请求]",
+      "abbr": "CMD_30_REQ",
+      "identifier": {
+        "command_type": 30
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x1E)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 30
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "进风口温度 [应答]",
+      "abbr": "CMD_30_RESP",
+      "identifier": {
+        "command_type": 30
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x1E)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 30
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "进风口温度",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 0.001,
+          "unit": "℃",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "电池电压 [请求]",
+      "abbr": "CMD_61_REQ",
+      "identifier": {
+        "command_type": 61
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x3D)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 61
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "电池电压 [应答]",
+      "abbr": "CMD_61_RESP",
+      "identifier": {
+        "command_type": 61
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x3D)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 61
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "电池电压",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mV",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "设置模块输出电压 [请求]",
+      "abbr": "CMD_02_REQ",
+      "identifier": {
+        "command_type": 2
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置请求",
+      "fields": [
+        {
+          "name": "命令类型(0x02)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 2
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "输出电压设定值",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mV",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "设置模块输出电压 [应答]",
+      "abbr": "CMD_02_RESP",
+      "identifier": {
+        "command_type": 2
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置应答",
+      "fields": [
+        {
+          "name": "命令类型(0x02)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 2
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "输出电压设定值",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mV",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "设置模块输出限流点 [请求]",
+      "abbr": "CMD_03_REQ",
+      "identifier": {
+        "command_type": 3
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置请求",
+      "fields": [
+        {
+          "name": "命令类型(0x03)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "输出限流点设定值",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mA",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "设置模块输出限流点 [应答]",
+      "abbr": "CMD_03_RESP",
+      "identifier": {
+        "command_type": 3
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置应答",
+      "fields": [
+        {
+          "name": "命令类型(0x03)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "输出限流点设定值",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mA",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DCDC开关机 [请求]",
+      "abbr": "CMD_04_REQ",
+      "identifier": {
+        "command_type": 4
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置请求",
+      "fields": [
+        {
+          "name": "命令类型(0x04)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 4
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "开关机",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "0": "开机",
+            "1": "关机",
+            "17": "线性关机"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DCDC开关机 [应答]",
+      "abbr": "CMD_04_RESP",
+      "identifier": {
+        "command_type": 4
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置应答",
+      "fields": [
+        {
+          "name": "命令类型(0x04)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 4
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "开关机",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "0": "开机",
+            "1": "关机",
+            "17": "线性关机"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "设置高低压模式 [请求]",
+      "abbr": "CMD_95_REQ",
+      "identifier": {
+        "command_type": 95
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置请求",
+      "fields": [
+        {
+          "name": "命令类型(0x5F)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 95
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "高低压模式",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "1": "高压模式",
+            "2": "低压模式",
+            "3": "自动模式"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "设置高低压模式 [应答]",
+      "abbr": "CMD_95_RESP",
+      "identifier": {
+        "command_type": 95
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置应答",
+      "fields": [
+        {
+          "name": "命令类型(0x5F)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 95
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "高低压模式",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "1": "高压模式",
+            "2": "低压模式",
+            "3": "自动模式"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "读取序列号 [请求]",
+      "abbr": "CMD_05_REQ",
+      "identifier": {
+        "command_type": 5
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x05)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 5
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "读取序列号 [应答]",
+      "abbr": "CMD_05_RESP",
+      "identifier": {
+        "command_type": 5
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x05)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 5
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "required": true,
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SerialNumberResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 4
+        },
+        {
+          "name": "序列号高位(年产周)",
+          "byte_start": 3,
+          "length": 2,
+          "data_type": "int_be",
+          "required": true
+        },
+        {
+          "name": "序列号",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "线电压BC [请求]",
+      "abbr": "CMD_21_REQ",
+      "identifier": {
+        "command_type": 21
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x15)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 21
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "线电压BC [应答]",
+      "abbr": "CMD_21_RESP",
+      "identifier": {
+        "command_type": 21
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x15)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 21
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "线电压BC",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mV"
+        }
+      ]
+    },
+    {
+      "name": "线电压CA [请求]",
+      "abbr": "CMD_22_REQ",
+      "identifier": {
+        "command_type": 22
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x16)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 22
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "线电压CA [应答]",
+      "abbr": "CMD_22_RESP",
+      "identifier": {
+        "command_type": 22
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x16)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 22
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "线电压CA",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mV"
+        }
+      ]
+    },
+    {
+      "name": "风扇静音模式 [请求]",
+      "abbr": "CMD_62_REQ",
+      "identifier": {
+        "command_type": 62
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置请求",
+      "fields": [
+        {
+          "name": "命令类型(0x3E)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 62
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "静音模式",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "0": "标准模式",
+            "6": "静音-65dB",
+            "7": "静音-70dB",
+            "10": "静音-60dB",
+            "20": "静音-55dB",
+            "30": "静音-50dB",
+            "40": "静音-45dB",
+            "50": "静音-40dB"
+          }
+        }
+      ]
+    },
+    {
+      "name": "风扇静音模式 [应答]",
+      "abbr": "CMD_62_RESP",
+      "identifier": {
+        "command_type": 62
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置应答",
+      "fields": [
+        {
+          "name": "命令类型(0x3E)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 62
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "静音模式",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "0": "标准模式",
+            "6": "静音-65dB",
+            "7": "静音-70dB",
+            "10": "静音-60dB",
+            "20": "静音-55dB",
+            "30": "静音-50dB",
+            "40": "静音-45dB",
+            "50": "静音-40dB"
+          }
+        }
+      ]
+    },
+    {
+      "name": "设置/读取组地址 [设置请求]",
+      "abbr": "CMD_89_SET_REQ",
+      "identifier": {
+        "command_type": 89
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x59)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 89
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "组地址值",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "range": [
+            1,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "name": "设置/读取组地址 [设置应答]",
+      "abbr": "CMD_89_SET_RESP",
+      "identifier": {
+        "command_type": 89
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x59)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 89
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "组地址值",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "range": [
+            1,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "name": "设置/读取组地址 [读取请求]",
+      "abbr": "CMD_89_READ_REQ",
+      "identifier": {
+        "command_type": 89
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x59)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 89
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "设置/读取组地址 [读取应答]",
+      "abbr": "CMD_89_READ_RESP",
+      "identifier": {
+        "command_type": 89
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x59)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 89
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "组地址值",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "range": [
+            1,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "name": "拓展命令 [设置请求]",
+      "abbr": "CMD_127_SET_REQ",
+      "identifier": {
+        "command_type": 127
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x7F)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 127
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 0
+        },
+        {
+          "name": "拓展子命令",
+          "byte_start": 3,
+          "length": 2,
+          "data_type": "int_be",
+          "enum": {
+            "23": "待机时长(h)",
+            "24": "运行时长(h)",
+            "127": "通信超时(s)"
+          }
+        },
+        {
+          "name": "命令数据",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be"
+        }
+      ]
+    },
+    {
+      "name": "拓展命令 [设置应答]",
+      "abbr": "CMD_127_SET_RESP",
+      "identifier": {
+        "command_type": 127
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x7F)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 127
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(SetDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 1
+        },
+        {
+          "name": "拓展子命令",
+          "byte_start": 3,
+          "length": 2,
+          "data_type": "int_be",
+          "enum": {
+            "23": "待机时长(h)",
+            "24": "运行时长(h)",
+            "127": "通信超时(s)"
+          }
+        },
+        {
+          "name": "命令数据",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be"
+        }
+      ]
+    },
+    {
+      "name": "拓展命令 [读取请求]",
+      "abbr": "CMD_127_READ_REQ",
+      "identifier": {
+        "command_type": 127
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊",
+      "fields": [
+        {
+          "name": "命令类型(0x7F)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 127
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        },
+        {
+          "name": "拓展子命令",
+          "byte_start": 3,
+          "length": 2,
+          "data_type": "int_be",
+          "enum": {
+            "23": "待机时长(h)",
+            "24": "运行时长(h)",
+            "127": "通信超时(s)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "拓展命令 [读取应答]",
+      "abbr": "CMD_127_READ_RESP",
+      "identifier": {
+        "command_type": 127
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "特殊(组地址/拓展/序列号)",
+      "fields": [
+        {
+          "name": "命令类型(0x7F)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 127
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "拓展子命令",
+          "byte_start": 3,
+          "length": 2,
+          "data_type": "int_be",
+          "enum": {
+            "23": "待机时长(h)",
+            "24": "运行时长(h)",
+            "127": "通信超时(s)"
+          }
+        },
+        {
+          "name": "命令数据",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be"
+        }
+      ]
+    },
+    {
+      "name": "高低压模式状态 [请求]",
+      "abbr": "CMD_96_REQ",
+      "identifier": {
+        "command_type": 96
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x60)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 96
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "高低压模式状态 [应答]",
+      "abbr": "CMD_96_RESP",
+      "identifier": {
+        "command_type": 96
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x60)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 96
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "高低压模式",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "1": "高压模式",
+            "2": "低压模式",
+            "3": "自动模式"
+          }
+        }
+      ]
+    },
+    {
+      "name": "实际高低压档位 [请求]",
+      "abbr": "CMD_101_REQ",
+      "identifier": {
+        "command_type": 101
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x65)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 101
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "实际高低压档位 [应答]",
+      "abbr": "CMD_101_RESP",
+      "identifier": {
+        "command_type": 101
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x65)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 101
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "高低压档位",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "1": "高压",
+            "2": "低压"
+          }
+        }
+      ]
+    },
+    {
+      "name": "输出电流能力 [请求]",
+      "abbr": "CMD_104_REQ",
+      "identifier": {
+        "command_type": 104
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x68)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 104
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "输出电流能力 [应答]",
+      "abbr": "CMD_104_RESP",
+      "identifier": {
+        "command_type": 104
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x68)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 104
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "电流能力",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "mA"
+        }
+      ]
+    },
+    {
+      "name": "输出功率能力 [请求]",
+      "abbr": "CMD_105_REQ",
+      "identifier": {
+        "command_type": 105
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x69)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 105
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "输出功率能力 [应答]",
+      "abbr": "CMD_105_RESP",
+      "identifier": {
+        "command_type": 105
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x69)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 105
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "功率能力",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "W"
+        }
+      ]
+    },
+    {
+      "name": "DCDC运行模式 [请求]",
+      "abbr": "CMD_107_REQ",
+      "identifier": {
+        "command_type": 107
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x6B)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 107
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "DCDC运行模式 [应答]",
+      "abbr": "CMD_107_RESP",
+      "identifier": {
+        "command_type": 107
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x6B)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 107
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "运行模式",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "enum": {
+            "1": "BOOT",
+            "2": "APP"
+          }
+        }
+      ]
+    },
+    {
+      "name": "输出电流+能力 [请求]",
+      "abbr": "CMD_114_REQ",
+      "identifier": {
+        "command_type": 114
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x72)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 114
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "输出电流+能力 [应答]",
+      "abbr": "CMD_114_RESP",
+      "identifier": {
+        "command_type": 114
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x72)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 114
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "输出电流(高16)",
+          "byte_start": 5,
+          "length": 2,
+          "data_type": "int_be",
+          "resolution": 0.1,
+          "unit": "A"
+        },
+        {
+          "name": "电流能力(低16)",
+          "byte_start": 7,
+          "length": 2,
+          "data_type": "int_be",
+          "resolution": 0.1,
+          "unit": "A"
+        }
+      ]
+    },
+    {
+      "name": "风扇1转速 [请求]",
+      "abbr": "CMD_120_REQ",
+      "identifier": {
+        "command_type": 120
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x78)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 120
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "风扇1转速 [应答]",
+      "abbr": "CMD_120_RESP",
+      "identifier": {
+        "command_type": 120
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x78)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 120
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "风扇1转速",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "rpm"
+        }
+      ]
+    },
+    {
+      "name": "风扇2转速 [请求]",
+      "abbr": "CMD_121_REQ",
+      "identifier": {
+        "command_type": 121
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x79)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 121
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "风扇2转速 [应答]",
+      "abbr": "CMD_121_RESP",
+      "identifier": {
+        "command_type": 121
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x79)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 121
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "风扇2转速",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "rpm"
+        }
+      ]
+    },
+    {
+      "name": "风扇3转速 [请求]",
+      "abbr": "CMD_122_REQ",
+      "identifier": {
+        "command_type": 122
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x7A)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 122
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "风扇3转速 [应答]",
+      "abbr": "CMD_122_RESP",
+      "identifier": {
+        "command_type": 122
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x7A)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 122
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "风扇3转速",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 1,
+          "unit": "rpm"
+        }
+      ]
+    },
+    {
+      "name": "温度裕量 [请求]",
+      "abbr": "CMD_123_REQ",
+      "identifier": {
+        "command_type": 123
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x7B)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 123
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "温度裕量 [应答]",
+      "abbr": "CMD_123_RESP",
+      "identifier": {
+        "command_type": 123
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x7B)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 123
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "温度裕量",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 0.001,
+          "unit": "℃"
+        }
+      ]
+    },
+    {
+      "name": "硬件版本号 [请求]",
+      "abbr": "CMD_125_REQ",
+      "identifier": {
+        "command_type": 125
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x7D)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 125
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "硬件版本号 [应答]",
+      "abbr": "CMD_125_RESP",
+      "identifier": {
+        "command_type": 125
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x7D)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 125
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "硬件版本号",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be"
+        }
+      ]
+    },
+    {
+      "name": "最大风扇转速% [请求]",
+      "abbr": "CMD_126_REQ",
+      "identifier": {
+        "command_type": 126
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取请求",
+      "fields": [
+        {
+          "name": "命令类型(0x7E)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 126
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadData)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 2
+        }
+      ]
+    },
+    {
+      "name": "最大风扇转速% [应答]",
+      "abbr": "CMD_126_RESP",
+      "identifier": {
+        "command_type": 126
+      },
+      "can_id_template": {
+        "protocol": 1,
+        "monitor_address": 1,
+        "module_address": 0
+      },
+      "direction": "模块→监控",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取应答",
+      "fields": [
+        {
+          "name": "命令类型(0x7E)",
+          "byte_start": 2,
+          "length": 1,
+          "data_type": "int_be",
+          "editable": false,
+          "default_value": 126
+        },
+        {
+          "name": "组地址",
+          "byte_start": 1,
+          "data_type": "bits",
+          "range": [
+            1,
+            15
+          ],
+          "bit_start": 4,
+          "bit_len": 4
+        },
+        {
+          "name": "信息类型(ReadDataResp)",
+          "byte_start": 1,
+          "length": 1,
+          "bit_start": 0,
+          "bit_len": 4,
+          "data_type": "bits",
+          "editable": false,
+          "default_value": 3
+        },
+        {
+          "name": "风扇转速%",
+          "byte_start": 5,
+          "length": 4,
+          "data_type": "int_be",
+          "resolution": 0.1,
+          "unit": "%",
+          "description": "1000=100%"
+        }
+      ]
+    }
+  ]
+}

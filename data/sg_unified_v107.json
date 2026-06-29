@@ -1,0 +1,282 @@
+{
+  "meta": {
+    "protocol_name": "国网三统一模块通讯协议",
+    "protocol_id": "sg_unified_v107",
+    "version": "V107",
+    "standard": "国家电网三统一模块通讯协议",
+    "baud_rate": 125000,
+    "frame_format": "CAN_2.0B_EXTENDED"
+  },
+  "can_id_schema": {
+    "total_bits": 29,
+    "fields": [
+      {"name": "priority", "bit_start": 26, "bit_len": 3, "description": "优先权"},
+      {"name": "edp", "bit_start": 25, "bit_len": 1, "fixed_value": 0},
+      {"name": "dp", "bit_start": 24, "bit_len": 1, "fixed_value": 0},
+      {"name": "pf", "bit_start": 16, "bit_len": 8, "description": "PDU格式"},
+      {"name": "ps", "bit_start": 8, "bit_len": 8, "description": "目标地址"},
+      {"name": "sa", "bit_start": 0, "bit_len": 8, "description": "源地址"}
+    ],
+    "message_identifier": "pf",
+    "identifier_field": "pf"
+  },
+  "addresses": {
+    "MNU": {"value": 0, "hex": "0x00", "name": "监控单元", "description": "地址可配置"},
+    "MODULE_BROADCAST": {"value": 255, "hex": "0xFF", "name": "模块广播地址"}
+  },
+  "encoding_rules": {
+    "default_byte_order": "little_endian",
+    "undefined_bit_fill": 1
+  },
+  "message_matcher": {
+    "type": "pf_based",
+    "match_field": "pf"
+  },
+  "message_groups": [
+    {"name": "固定分组遥控", "messages": ["RC_CMD_FIXED", "RC_RESP_FIXED"]},
+    {"name": "动态分组", "messages": ["GROUP_SET", "GROUP_RESP", "RC_CMD_DYN", "RC_RESP_DYN"]},
+    {"name": "遥信遥测", "messages": ["TELEMETRY"]},
+    {"name": "心跳", "messages": ["HEARTBEAT_TX", "HEARTBEAT_RX"]},
+    {"name": "定值", "messages": ["PARAM_SET", "PARAM_RESP", "PARAM_QUERY", "PARAM_QUERY_RESP"]}
+  ],
+  "messages": [
+    {
+      "name": "遥控命令（固定分组）",
+      "abbr": "RC_CMD_FIXED",
+      "identifier": {"pf": 1},
+      "can_id_template": {"priority": 6, "pf": 1, "ps": 255, "sa": 0},
+      "direction": "MNU→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "固定分组遥控",
+      "fields": [
+        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电", "3": "软启动开机", "4": "显示地址", "5": "参数修改"}, "required": true},
+        {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段(200-500V)", "1": "高压段(500-950V)"}, "required": true},
+        {"name": "功分接触器", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "主接触器", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "给定电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true},
+        {"name": "给定电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "range": [0, 600], "required": true},
+        {"name": "电池电压", "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true}
+      ]
+    },
+    {
+      "name": "遥控命令应答（固定分组）",
+      "abbr": "RC_RESP_FIXED",
+      "identifier": {"pf": 2},
+      "can_id_template": {"priority": 6, "pf": 2, "ps": 0, "sa": 255},
+      "direction": "模块→MNU",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "固定分组遥控",
+      "fields": [
+        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电", "3": "软启动开机", "4": "显示地址", "5": "参数修改"}, "required": true},
+        {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段", "1": "高压段"}, "required": true},
+        {"name": "功分接触器", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "主接触器", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "成功标识", "byte_start": 1, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "失败", "1": "成功"}, "required": true},
+        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "给定电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "required": true},
+        {"name": "给定电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "required": true},
+        {"name": "电池电压", "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "required": true}
+      ]
+    },
+    {
+      "name": "分组设置帧",
+      "abbr": "GROUP_SET",
+      "identifier": {"pf": 3},
+      "can_id_template": {"priority": 6, "pf": 3, "ps": 255, "sa": 0},
+      "direction": "MNU→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "动态分组",
+      "description": "动态分组模式: 设置/撤销分组",
+      "fields": [
+        {"name": "操作类型", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 2, "data_type": "bits", "enum": {"1": "分组设置", "2": "分组撤销"}, "required": true},
+        {"name": "地址类型", "byte_start": 1, "length": 1, "bit_start": 3, "bit_len": 2, "data_type": "bits", "enum": {"1": "连续地址", "2": "间断地址"}, "required": true},
+        {"name": "组号", "byte_start": 2, "length": 1, "data_type": "int_le", "range": [1, 255], "required": true},
+        {"name": "地址数目", "byte_start": 3, "length": 1, "data_type": "int_le", "range": [1, 255], "required": true},
+        {"name": "地址信息", "byte_start": 4, "length": 5, "data_type": "int_le", "description": "连续: Byte4=起始,Byte5=终止; 间断: Byte4-8各一地址", "required": true}
+      ]
+    },
+    {
+      "name": "分组设置应答帧",
+      "abbr": "GROUP_RESP",
+      "identifier": {"pf": 4},
+      "can_id_template": {"priority": 6, "pf": 4, "ps": 0, "sa": 255},
+      "direction": "模块→MNU",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "动态分组",
+      "fields": [
+        {"name": "成功标识", "byte_start": 1, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "失败", "1": "成功"}, "required": true},
+        {"name": "操作类型", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 2, "data_type": "bits", "enum": {"1": "设置", "2": "撤销"}, "required": true},
+        {"name": "地址类型", "byte_start": 1, "length": 1, "bit_start": 3, "bit_len": 2, "data_type": "bits", "enum": {"1": "连续", "2": "间断"}, "required": true},
+        {"name": "失败原因", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"0": "成功", "1": "使用中,设置/撤销失败", "2": "固定分组模式下,设置/撤销失败"}, "required": false}
+      ]
+    },
+    {
+      "name": "遥控命令（动态分组）",
+      "abbr": "RC_CMD_DYN",
+      "identifier": {"pf": 5},
+      "can_id_template": {"priority": 6, "pf": 5, "ps": 255, "sa": 0},
+      "direction": "MNU→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "动态分组",
+      "description": "同固定分组格式，操作指令增加0x06=停止充电(自动清除分组信息)",
+      "fields": [
+        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电", "3": "软启动开机", "4": "显示地址", "5": "参数修改", "6": "停止充电(清分组)"}, "required": true},
+        {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段", "1": "高压段"}, "required": true},
+        {"name": "功分接触器", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "主接触器", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "给定电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true},
+        {"name": "给定电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "range": [0, 600], "required": true},
+        {"name": "电池电压", "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true}
+      ]
+    },
+    {
+      "name": "遥控命令应答（动态分组）",
+      "abbr": "RC_RESP_DYN",
+      "identifier": {"pf": 6},
+      "can_id_template": {"priority": 6, "pf": 6, "ps": 0, "sa": 255},
+      "direction": "模块→MNU",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "动态分组",
+      "description": "同固定分组应答，操作指令增加0x06",
+      "fields": [
+        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电", "3": "软启动开机", "4": "显示地址", "5": "参数修改", "6": "停止充电(清分组)"}, "required": true},
+        {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段", "1": "高压段"}, "required": true},
+        {"name": "功分接触器", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "主接触器", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
+        {"name": "成功标识", "byte_start": 1, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "失败", "1": "成功"}, "required": true},
+        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "给定电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "required": true},
+        {"name": "给定电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "required": true},
+        {"name": "电池电压", "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "required": true}
+      ]
+    },
+    {
+      "name": "遥信遥测数据",
+      "abbr": "TELEMETRY",
+      "identifier": {"pf": 32},
+      "can_id_template": {"priority": 6, "pf": 32, "ps": 0, "sa": 255},
+      "direction": "模块→MNU",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "遥信遥测",
+      "fields": [
+        {"name": "保留/工作状态", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"1": "待机", "2": "工作状态"}, "required": true},
+        {"name": "告警状态", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "故障状态", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "分组模式", "byte_start": 1, "length": 1, "bit_start": 3, "bit_len": 1, "data_type": "bits", "enum": {"0": "固定分组", "1": "动态分组"}, "required": true},
+        {"name": "交流输入故障", "byte_start": 2, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "直流输出过压", "byte_start": 2, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "直流输出欠压", "byte_start": 2, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "过温", "byte_start": 2, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "直流输出短路", "byte_start": 2, "length": 1, "bit_start": 3, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "风扇故障", "byte_start": 2, "length": 1, "bit_start": 2, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "泄放故障", "byte_start": 2, "length": 1, "bit_start": 1, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "其他故障", "byte_start": 2, "length": 1, "bit_start": 0, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "直流输出电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true},
+        {"name": "直流输出电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "range": [0, 600], "required": true},
+        {"name": "当前组号", "byte_start": 7, "length": 1, "data_type": "int_le", "required": false}
+      ]
+    },
+    {
+      "name": "心跳帧（发送）",
+      "abbr": "HEARTBEAT_TX",
+      "identifier": {"pf": 64},
+      "can_id_template": {"priority": 6, "pf": 64, "ps": 255, "sa": 0},
+      "direction": "MNU→模块",
+      "cycle_ms": 0,
+      "data_length": 0,
+      "stage": "心跳",
+      "fields": []
+    },
+    {
+      "name": "心跳帧（接收）",
+      "abbr": "HEARTBEAT_RX",
+      "identifier": {"pf": 65},
+      "can_id_template": {"priority": 6, "pf": 65, "ps": 0, "sa": 255},
+      "direction": "模块→MNU",
+      "cycle_ms": 0,
+      "data_length": 0,
+      "stage": "心跳",
+      "fields": []
+    },
+    {
+      "name": "定值设置帧",
+      "abbr": "PARAM_SET",
+      "identifier": {"pf": 128},
+      "can_id_template": {"priority": 6, "pf": 128, "ps": 255, "sa": 0},
+      "direction": "MNU→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "定值",
+      "description": "设置模块定值参数",
+      "fields": [
+        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "range": [1, 200], "required": true},
+        {"name": "预留", "byte_start": 5, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "定值信息", "byte_start": 6, "length": 3, "data_type": "int_le", "description": "48项定值参数,详见国网原始规范文档", "required": true}
+      ]
+    },
+    {
+      "name": "定值设置应答帧",
+      "abbr": "PARAM_RESP",
+      "identifier": {"pf": 129},
+      "can_id_template": {"priority": 6, "pf": 129, "ps": 0, "sa": 255},
+      "direction": "模块→MNU",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "定值",
+      "fields": [
+        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值信息", "byte_start": 5, "length": 3, "data_type": "int_le", "required": false}
+      ]
+    },
+    {
+      "name": "定值查询帧",
+      "abbr": "PARAM_QUERY",
+      "identifier": {"pf": 130},
+      "can_id_template": {"priority": 6, "pf": 130, "ps": 255, "sa": 0},
+      "direction": "MNU→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "定值",
+      "description": "查询模块定值参数",
+      "fields": [
+        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "range": [1, 200], "required": true},
+        {"name": "预留", "byte_start": 5, "length": 3, "data_type": "int_le", "required": false}
+      ]
+    },
+    {
+      "name": "定值查询应答帧",
+      "abbr": "PARAM_QUERY_RESP",
+      "identifier": {"pf": 131},
+      "can_id_template": {"priority": 6, "pf": 131, "ps": 0, "sa": 255},
+      "direction": "模块→MNU",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "定值",
+      "fields": [
+        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值信息", "byte_start": 5, "length": 3, "data_type": "int_le", "required": true}
+      ]
+    }
+  ]
+}

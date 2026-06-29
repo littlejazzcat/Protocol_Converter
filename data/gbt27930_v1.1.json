@@ -1,0 +1,422 @@
+{
+  "meta": {
+    "protocol_name": "GB/T 27930-2023 A类系统",
+    "protocol_id": "gbt27930_v1.1",
+    "version": "V1.1",
+    "standard": "GB/T 27930-2023",
+    "baud_rate": 250000,
+    "frame_format": "CAN_2.0B_EXTENDED"
+  },
+  "can_id_schema": {
+    "total_bits": 29,
+    "fields": [
+      {"name": "priority", "bit_start": 26, "bit_len": 3, "description": "优先权"},
+      {"name": "edp", "bit_start": 25, "bit_len": 1, "fixed_value": 0},
+      {"name": "dp", "bit_start": 24, "bit_len": 1, "fixed_value": 0},
+      {"name": "pf", "bit_start": 16, "bit_len": 8, "description": "PDU格式"},
+      {"name": "ps", "bit_start": 8, "bit_len": 8, "description": "目标地址"},
+      {"name": "sa", "bit_start": 0, "bit_len": 8, "description": "源地址"}
+    ],
+    "message_identifier": "pf",
+    "identifier_field": "pf"
+  },
+  "addresses": {
+    "SECC": {"value": 86, "hex": "0x56", "name": "充电机"},
+    "EVCC": {"value": 244, "hex": "0xF4", "name": "车辆"}
+  },
+  "encoding_rules": {
+    "default_byte_order": "little_endian",
+    "undefined_bit_fill": 1
+  },
+  "message_matcher": {
+    "type": "pf_based",
+    "match_field": "pf"
+  },
+  "message_groups": [
+    {"name": "充电握手阶段", "messages": ["CHM", "BHM", "CRM", "BRM"]},
+    {"name": "充电参数配置阶段", "messages": ["BCP", "CTS", "CML", "BRO", "CRO"]},
+    {"name": "充电阶段", "messages": ["BCL", "BCS", "CCS", "BSM", "BMV", "BMT", "BSP"]},
+    {"name": "充电结束阶段", "messages": ["BST", "CST", "BSD", "CSD"]},
+    {"name": "错误报文", "messages": ["BEM", "CEM"]}
+  ],
+  "messages": [
+    {
+      "name": "充电机握手报文",
+      "abbr": "CHM",
+      "identifier": {"pf": 38},
+      "can_id_template": {"priority": 6, "pf": 38, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 250,
+      "data_length": 3,
+      "stage": "充电握手阶段",
+      "fields": [
+        {"name": "充电机通信协议版本号", "spn": 2600, "byte_start": 1, "length": 3, "data_type": "int_le", "unit": "", "description": "V1.1: byte1=01H, byte2=01H, byte3=00H", "required": true}
+      ]
+    },
+    {
+      "name": "车辆握手报文",
+      "abbr": "BHM",
+      "identifier": {"pf": 39},
+      "can_id_template": {"priority": 6, "pf": 39, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 250,
+      "data_length": 2,
+      "stage": "充电握手阶段",
+      "fields": [
+        {"name": "绝缘监测允许总电压", "spn": 2601, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true}
+      ]
+    },
+    {
+      "name": "充电机辨识报文",
+      "abbr": "CRM",
+      "identifier": {"pf": 1},
+      "can_id_template": {"priority": 6, "pf": 1, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 250,
+      "data_length": 8,
+      "stage": "充电握手阶段",
+      "fields": [
+        {"name": "辨识结果", "spn": 2560, "byte_start": 1, "length": 1, "data_type": "int_le", "enum": {"0": "未辨识", "170": "已辨识(0xAA)"}, "required": true},
+        {"name": "充电机编号", "spn": 2561, "byte_start": 2, "length": 4, "data_type": "int_le", "required": true},
+        {"name": "充电机/充电站区域编码", "spn": 2562, "byte_start": 6, "length": 3, "data_type": "ascii", "required": false}
+      ]
+    },
+    {
+      "name": "BMS和车辆辨识报文",
+      "abbr": "BRM",
+      "identifier": {"pf": 2},
+      "can_id_template": {"priority": 7, "pf": 2, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 250,
+      "data_length": 49,
+      "tp": true,
+      "stage": "充电握手阶段",
+      "fields": [
+        {"name": "车辆通信协议版本号", "spn": 2565, "byte_start": 1, "length": 3, "data_type": "int_le", "description": "V1.1: 01H 01H 00H", "required": true},
+        {"name": "电池类型", "spn": 2566, "byte_start": 4, "length": 1, "data_type": "int_le", "enum": {"1": "铅酸", "2": "镍氢", "3": "磷酸铁锂", "4": "锰酸锂", "5": "钴酸锂", "6": "三元", "7": "聚合物锂离子", "8": "钛酸锂", "255": "其他"}, "required": true},
+        {"name": "额定容量", "spn": 2567, "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "Ah", "range": [0, 6553.5], "required": true},
+        {"name": "额定总电压", "spn": 2568, "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 6553.5], "required": true},
+        {"name": "电池生产厂商名称", "spn": 2569, "byte_start": 9, "length": 4, "data_type": "ascii", "required": false},
+        {"name": "电池组序号", "spn": 2570, "byte_start": 13, "length": 4, "data_type": "int_le", "required": false},
+        {"name": "生产日期-年", "spn": 2571, "byte_start": 17, "length": 1, "data_type": "int_le", "resolution": 1, "offset": 1985, "range": [1985, 2235], "required": false},
+        {"name": "生产日期-月", "spn": 2571, "byte_start": 18, "length": 1, "data_type": "int_le", "range": [1, 12], "required": false},
+        {"name": "生产日期-日", "spn": 2571, "byte_start": 19, "length": 1, "data_type": "int_le", "range": [1, 31], "required": false},
+        {"name": "电池组充电次数", "spn": 2572, "byte_start": 20, "length": 3, "data_type": "int_le", "required": false},
+        {"name": "电池组产权标识", "spn": 2573, "byte_start": 23, "length": 1, "data_type": "int_le", "enum": {"0": "租赁", "1": "车自有"}, "required": false},
+        {"name": "预留", "spn": 2574, "byte_start": 24, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "扩展车辆识别码(EVIN)", "spn": 2575, "byte_start": 25, "length": 17, "data_type": "ascii", "required": false},
+        {"name": "车辆通信协议软件版本号", "spn": 2576, "byte_start": 42, "length": 8, "data_type": "int_le", "required": false}
+      ]
+    },
+    {
+      "name": "车辆充电参数报文",
+      "abbr": "BCP",
+      "identifier": {"pf": 6},
+      "can_id_template": {"priority": 7, "pf": 6, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 500,
+      "data_length": 13,
+      "tp": true,
+      "stage": "充电参数配置阶段",
+      "fields": [
+        {"name": "单体蓄电池最高允许充电电压", "spn": 2816, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 0.01, "offset": 0.0, "unit": "V", "range": [0, 24], "required": true},
+        {"name": "最高允许充电电流", "spn": 2817, "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": -400.0, "unit": "A", "range": [-400, 2153.5], "required": true},
+        {"name": "动力蓄电池标称总能量", "spn": 2818, "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "kWh", "range": [0, 1000], "required": true},
+        {"name": "最高允许充电总电压", "spn": 2819, "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true},
+        {"name": "单体蓄电池最高允许温度", "spn": 2820, "byte_start": 9, "length": 1, "data_type": "int_le", "resolution": 1, "offset": -50.0, "unit": "℃", "range": [-50, 200], "required": true},
+        {"name": "整车荷电状态SOC", "spn": 2821, "byte_start": 10, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "%", "range": [0, 100], "required": true},
+        {"name": "车辆接口当前电压测量值", "spn": 2822, "byte_start": 12, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true}
+      ]
+    },
+    {
+      "name": "充电机时间同步信息报文",
+      "abbr": "CTS",
+      "identifier": {"pf": 7},
+      "can_id_template": {"priority": 6, "pf": 7, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 500,
+      "data_length": 7,
+      "stage": "充电参数配置阶段",
+      "fields": [
+        {"name": "时间戳", "spn": 2823, "byte_start": 1, "length": 7, "data_type": "bcd", "description": "压缩BCD: byte7=年高,byte6=年低,byte5=月,byte4=日,byte3=时,byte2=分,byte1=秒", "required": false}
+      ]
+    },
+    {
+      "name": "充电机最大输出能力报文",
+      "abbr": "CML",
+      "identifier": {"pf": 8},
+      "can_id_template": {"priority": 6, "pf": 8, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 250,
+      "data_length": 8,
+      "stage": "充电参数配置阶段",
+      "fields": [
+        {"name": "最高充电电压", "spn": 2824, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true},
+        {"name": "最低充电电压", "spn": 2825, "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true},
+        {"name": "最大充电电流", "spn": 2826, "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": -400.0, "unit": "A", "range": [-400, 2153.5], "required": true},
+        {"name": "最小充电电流", "spn": 2827, "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": -400.0, "unit": "A", "range": [-400, 2153.5], "required": true}
+      ]
+    },
+    {
+      "name": "车辆充电准备就绪状态报文",
+      "abbr": "BRO",
+      "identifier": {"pf": 9},
+      "can_id_template": {"priority": 4, "pf": 9, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 250,
+      "data_length": 1,
+      "stage": "充电参数配置阶段",
+      "fields": [
+        {"name": "车辆充电准备好", "spn": 2829, "byte_start": 1, "length": 1, "data_type": "int_le", "enum": {"0": "未准备好", "170": "准备好(0xAA)"}, "required": true}
+      ]
+    },
+    {
+      "name": "充电机输出准备就绪状态报文",
+      "abbr": "CRO",
+      "identifier": {"pf": 10},
+      "can_id_template": {"priority": 4, "pf": 10, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 250,
+      "data_length": 1,
+      "stage": "充电参数配置阶段",
+      "fields": [
+        {"name": "充电机充电准备好", "spn": 2830, "byte_start": 1, "length": 1, "data_type": "int_le", "enum": {"0": "未完成准备", "170": "完成准备(0xAA)"}, "required": true}
+      ]
+    },
+    {
+      "name": "电池充电需求报文",
+      "abbr": "BCL",
+      "identifier": {"pf": 16},
+      "can_id_template": {"priority": 6, "pf": 16, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 50,
+      "data_length": 5,
+      "stage": "充电阶段",
+      "fields": [
+        {"name": "车辆接口充电电压需求", "spn": 3072, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true},
+        {"name": "车辆接口充电电流需求", "spn": 3073, "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": -400.0, "unit": "A", "range": [-400, 2153.5], "required": true},
+        {"name": "充电模式", "spn": 3074, "byte_start": 5, "length": 1, "data_type": "int_le", "enum": {"1": "恒压充电", "2": "恒流充电"}, "required": true}
+      ]
+    },
+    {
+      "name": "电池充电总状态报文",
+      "abbr": "BCS",
+      "identifier": {"pf": 17},
+      "can_id_template": {"priority": 7, "pf": 17, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 250,
+      "data_length": 9,
+      "tp": true,
+      "stage": "充电阶段",
+      "fields": [
+        {"name": "车辆接口当前电压测量值", "spn": 3075, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true},
+        {"name": "车辆接口当前电流测量值", "spn": 3076, "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": -400.0, "unit": "A", "range": [-400, 2153.5], "required": true},
+        {"name": "最高单体蓄电池电压及其组号", "spn": 3077, "byte_start": 5, "length": 2, "data_type": "int_le", "required": true},
+        {"name": "当前荷电状态SOC", "spn": 3078, "byte_start": 7, "length": 1, "data_type": "int_le", "resolution": 1, "unit": "%", "range": [0, 100], "required": true},
+        {"name": "估算剩余充电时间", "spn": 3079, "byte_start": 8, "length": 2, "data_type": "int_le", "resolution": 1, "unit": "min", "range": [0, 600], "required": true}
+      ]
+    },
+    {
+      "name": "充电机充电状态报文",
+      "abbr": "CCS",
+      "identifier": {"pf": 18},
+      "can_id_template": {"priority": 6, "pf": 18, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 50,
+      "data_length": 7,
+      "stage": "充电阶段",
+      "fields": [
+        {"name": "车辆接口当前电压测量值", "spn": 3081, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": 0.0, "unit": "V", "range": [0, 6553.5], "required": true},
+        {"name": "车辆接口当前电流测量值", "spn": 3082, "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "offset": -400.0, "unit": "A", "range": [-400, 2153.5], "required": true},
+        {"name": "累计充电时间", "spn": 3083, "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 1, "unit": "min", "range": [0, 600], "required": true},
+        {"name": "充电允许", "spn": 3929, "byte_start": 7, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "暂停", "1": "允许"}, "required": true}
+      ]
+    },
+    {
+      "name": "车辆状态信息报文",
+      "abbr": "BSM",
+      "identifier": {"pf": 19},
+      "can_id_template": {"priority": 6, "pf": 19, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 250,
+      "data_length": 7,
+      "stage": "充电阶段",
+      "fields": [
+        {"name": "最高单体蓄电池电压所在编号", "spn": 3085, "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "当前单体蓄电池最高温度", "spn": 3086, "byte_start": 2, "length": 1, "data_type": "int_le", "resolution": 1, "offset": -50.0, "unit": "℃", "range": [-50, 200], "required": true},
+        {"name": "最高动力蓄电池温度检测点编号", "spn": 3087, "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "当前单体蓄电池最低温度", "spn": 3088, "byte_start": 4, "length": 1, "data_type": "int_le", "resolution": 1, "offset": -50.0, "unit": "℃", "range": [-50, 200], "required": true},
+        {"name": "最低动力蓄电池温度检测点编号", "spn": 3089, "byte_start": 5, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "单体电压过高", "spn": 3090, "byte_start": 6, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "不可信"}, "required": true},
+        {"name": "SOC过高", "spn": 3090, "byte_start": 6, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "不可信"}, "required": true},
+        {"name": "SOC过低", "spn": 3090, "byte_start": 6, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过低", "2": "不可信"}, "required": true},
+        {"name": "充电过流", "spn": 3093, "byte_start": 6, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过流", "2": "不可信"}, "required": true},
+        {"name": "温度过高", "spn": 3091, "byte_start": 7, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "不可信"}, "required": true},
+        {"name": "绝缘状态", "spn": 3092, "byte_start": 7, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "连接状态", "spn": 3094, "byte_start": 7, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "充电允许", "spn": 3095, "byte_start": 7, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "禁止(暂停)", "1": "允许(恢复)", "2": "不可信"}, "required": true}
+      ]
+    },
+    {
+      "name": "单体蓄电池电压报文",
+      "abbr": "BMV",
+      "identifier": {"pf": 21},
+      "can_id_template": {"priority": 7, "pf": 21, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 10000,
+      "data_length": null,
+      "tp": true,
+      "stage": "充电阶段",
+      "description": "平铺枚举结构，N×2字节，无计数字段",
+      "fields": [
+        {"name": "#1单体电压", "spn": 3101, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "V", "range": [0, 24], "required": false}
+      ]
+    },
+    {
+      "name": "动力蓄电池温度报文",
+      "abbr": "BMT",
+      "identifier": {"pf": 22},
+      "can_id_template": {"priority": 7, "pf": 22, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 10000,
+      "data_length": null,
+      "tp": true,
+      "stage": "充电阶段",
+      "fields": [
+        {"name": "温度", "spn": 3361, "byte_start": 1, "length": 1, "data_type": "int_le", "resolution": 1, "offset": -50.0, "unit": "℃", "range": [-50, 200], "required": false}
+      ]
+    },
+    {
+      "name": "动力蓄电池预留报文",
+      "abbr": "BSP",
+      "identifier": {"pf": 23},
+      "can_id_template": {"priority": 7, "pf": 23, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 10000,
+      "data_length": null,
+      "tp": true,
+      "stage": "充电阶段",
+      "description": "仅私有场站使用",
+      "fields": [
+        {"name": "预留字段", "spn": 3491, "byte_start": 1, "length": 1, "data_type": "int_le", "required": false}
+      ]
+    },
+    {
+      "name": "车辆中止充电报文",
+      "abbr": "BST",
+      "identifier": {"pf": 25},
+      "can_id_template": {"priority": 4, "pf": 25, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 10,
+      "data_length": 4,
+      "stage": "充电结束阶段",
+      "fields": [
+        {"name": "SOC目标", "spn": 3511, "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "未达", "1": "已达", "2": "不可信"}, "required": true},
+        {"name": "总电压目标", "spn": 3511, "byte_start": 1, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "未达", "1": "已达", "2": "不可信"}, "required": true},
+        {"name": "单体电压目标", "spn": 3511, "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "未达", "1": "已达", "2": "不可信"}, "required": true},
+        {"name": "主动中止", "spn": 3511, "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "充电机中止", "2": "不可信"}, "required": true},
+        {"name": "绝缘故障", "spn": 3512, "byte_start": 2, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "插座过温", "spn": 3512, "byte_start": 2, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "线束过温", "spn": 3512, "byte_start": 2, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "耦合器故障", "spn": 3512, "byte_start": 2, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "电池温度过高", "spn": 3512, "byte_start": 3, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "高压继电器故障", "spn": 3512, "byte_start": 3, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "检测点2电压故障", "spn": 3512, "byte_start": 3, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "其他故障", "spn": 3512, "byte_start": 3, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
+        {"name": "电流过大", "spn": 3513, "byte_start": 4, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超需求", "2": "不可信"}, "required": true},
+        {"name": "电压异常", "spn": 3513, "byte_start": 4, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "异常", "2": "不可信"}, "required": true},
+        {"name": "参数不匹配", "spn": 3513, "byte_start": 4, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "匹配", "1": "不匹配", "2": "不可信"}, "required": true}
+      ]
+    },
+    {
+      "name": "充电机中止充电报文",
+      "abbr": "CST",
+      "identifier": {"pf": 26},
+      "can_id_template": {"priority": 4, "pf": 26, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 10,
+      "data_length": 4,
+      "stage": "充电结束阶段",
+      "fields": [
+        {"name": "达到设定条件", "spn": 3521, "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "中止", "2": "不可信"}, "required": true},
+        {"name": "人工中止", "spn": 3521, "byte_start": 1, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "中止", "2": "不可信"}, "required": true},
+        {"name": "故障中止", "spn": 3521, "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "中止", "2": "不可信"}, "required": true},
+        {"name": "车辆主动中止", "spn": 3521, "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "中止", "2": "不可信"}, "required": true},
+        {"name": "充电机过温", "spn": 3522, "byte_start": 2, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过热", "2": "不可信"}, "required": true},
+        {"name": "中止充电故障原因", "spn": 3522, "byte_start": 2, "length": 2, "data_type": "int_le", "required": true},
+        {"name": "中止充电错误原因", "spn": 3523, "byte_start": 4, "length": 1, "data_type": "int_le", "required": true}
+      ]
+    },
+    {
+      "name": "车辆统计数据报文",
+      "abbr": "BSD",
+      "identifier": {"pf": 28},
+      "can_id_template": {"priority": 6, "pf": 28, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 250,
+      "data_length": 7,
+      "stage": "充电结束阶段",
+      "fields": [
+        {"name": "中止荷电状态SOC", "spn": 3601, "byte_start": 1, "length": 1, "data_type": "int_le", "resolution": 1, "unit": "%", "range": [0, 100], "required": true},
+        {"name": "单体蓄电池最低电压", "spn": 3602, "byte_start": 2, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "V", "range": [0, 24], "required": true},
+        {"name": "单体蓄电池最高电压", "spn": 3603, "byte_start": 4, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "V", "range": [0, 24], "required": true},
+        {"name": "动力蓄电池最低温度", "spn": 3604, "byte_start": 6, "length": 1, "data_type": "int_le", "resolution": 1, "offset": -50.0, "unit": "℃", "range": [-50, 200], "required": true},
+        {"name": "动力蓄电池最高温度", "spn": 3605, "byte_start": 7, "length": 1, "data_type": "int_le", "resolution": 1, "offset": -50.0, "unit": "℃", "range": [-50, 200], "required": true}
+      ]
+    },
+    {
+      "name": "充电机统计数据报文",
+      "abbr": "CSD",
+      "identifier": {"pf": 29},
+      "can_id_template": {"priority": 6, "pf": 29, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 250,
+      "data_length": 8,
+      "stage": "充电结束阶段",
+      "fields": [
+        {"name": "本次充电时间", "spn": 3611, "byte_start": 1, "length": 2, "data_type": "int_le", "resolution": 1, "unit": "min", "range": [0, 600], "required": true},
+        {"name": "输出能量", "spn": 3612, "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "kWh", "range": [0, 1000], "required": true},
+        {"name": "充电机编号", "spn": 3613, "byte_start": 5, "length": 4, "data_type": "int_le", "required": true}
+      ]
+    },
+    {
+      "name": "BMS及车辆错误报文",
+      "abbr": "BEM",
+      "identifier": {"pf": 30},
+      "can_id_template": {"priority": 2, "pf": 30, "ps": 86, "sa": 244},
+      "direction": "车辆→充电机",
+      "cycle_ms": 250,
+      "data_length": 4,
+      "stage": "错误报文",
+      "fields": [
+        {"name": "接收CRM(0x00)超时", "spn": 3901, "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收CRM(0xAA)超时", "spn": 3902, "byte_start": 1, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收CTS/CML超时", "spn": 3903, "byte_start": 2, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收CRO超时", "spn": 3904, "byte_start": 2, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收CCS超时", "spn": 3905, "byte_start": 3, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收CST超时", "spn": 3906, "byte_start": 3, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收CSD超时", "spn": 3907, "byte_start": 4, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true}
+      ]
+    },
+    {
+      "name": "充电机错误报文",
+      "abbr": "CEM",
+      "identifier": {"pf": 31},
+      "can_id_template": {"priority": 2, "pf": 31, "ps": 244, "sa": 86},
+      "direction": "充电机→车辆",
+      "cycle_ms": 250,
+      "data_length": 4,
+      "stage": "错误报文",
+      "fields": [
+        {"name": "接收BRM超时", "spn": 3921, "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收BCP超时", "spn": 3922, "byte_start": 2, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收BRO超时", "spn": 3923, "byte_start": 2, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收BCS超时", "spn": 3924, "byte_start": 3, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收BCL超时", "spn": 3925, "byte_start": 3, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收BST超时", "spn": 3926, "byte_start": 3, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收BSD超时", "spn": 3927, "byte_start": 4, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true},
+        {"name": "接收BSM超时", "spn": 3928, "byte_start": 4, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "超时", "2": "不可信"}, "required": true}
+      ]
+    }
+  ]
+}

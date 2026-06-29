@@ -1,0 +1,284 @@
+{
+  "meta": {
+    "protocol_name": "英飞源充电模块CAN通讯协议",
+    "protocol_id": "infypower_v107",
+    "version": "V107",
+    "standard": "英飞源充电模块CAN通讯协议 V107",
+    "baud_rate": 125000,
+    "frame_format": "CAN_2.0B_EXTENDED"
+  },
+  "can_id_schema": {
+    "total_bits": 29,
+    "fields": [
+      {"name": "error_code", "bit_start": 26, "bit_len": 3, "description": "错误码"},
+      {"name": "device_number", "bit_start": 22, "bit_len": 4, "description": "设备号"},
+      {"name": "command_number", "bit_start": 16, "bit_len": 6, "description": "命令号"},
+      {"name": "dest_addr", "bit_start": 8, "bit_len": 8, "description": "目的地址"},
+      {"name": "source_addr", "bit_start": 0, "bit_len": 8, "description": "源地址"}
+    ],
+    "message_identifier": "command_number",
+    "identifier_field": "command_number",
+    "identifier_aux": "device_number"
+  },
+  "addresses": {
+    "MONITOR": {"value": 240, "hex": "0xF0", "name": "上级监控", "range": "0xF0~0xF8"},
+    "MODULE_BROADCAST": {"value": 63, "hex": "0x3F", "name": "模块广播地址"},
+    "MODULE": {"range": "0x00~0x3B", "name": "模块地址"}
+  },
+  "encoding_rules": {
+    "default_byte_order": "big_endian",
+    "undefined_bit_fill": 0
+  },
+  "message_matcher": {
+    "type": "command_number",
+    "match_field": "command_number",
+    "aux_field": "device_number"
+  },
+  "message_groups": [
+    {"name": "系统读取", "messages": ["CMD_01_SYS_FLOAT", "CMD_02_COUNT", "CMD_08_SYS_INT"]},
+    {"name": "模块读取", "messages": ["CMD_03_MOD_FLOAT", "CMD_04_STATUS", "CMD_06_INPUT_V", "CMD_09_MOD_INT", "CMD_0A_LIMIT"]},
+    {"name": "控制设置", "messages": ["CMD_13_WALKIN", "CMD_14_LED", "CMD_16_GROUP", "CMD_19_SLEEP", "CMD_1A_POWER", "CMD_1F_ADDR"]},
+    {"name": "输出设置", "messages": ["CMD_1B_SET_ALL", "CMD_1C_SET_ONE"]}
+  ],
+  "messages": [
+    {
+      "name": "读取系统电压电流（浮点）",
+      "abbr": "CMD_01_SYS_FLOAT",
+      "identifier": {"command_number": 1, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 1, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取命令（浮点）",
+      "fields": [
+        {"name": "系统电压", "byte_start": 1, "length": 4, "data_type": "float_ieee754", "unit": "V", "required": true},
+        {"name": "系统总电流", "byte_start": 5, "length": 4, "data_type": "float_ieee754", "unit": "A", "required": true}
+      ]
+    },
+    {
+      "name": "读取模块N电压电流（浮点）",
+      "abbr": "CMD_03_MOD_FLOAT",
+      "identifier": {"command_number": 3, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 3, "dest_addr": 0, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取命令（浮点）",
+      "fields": [
+        {"name": "模块N电压", "byte_start": 1, "length": 4, "data_type": "float_ieee754", "unit": "V", "required": true},
+        {"name": "模块N电流", "byte_start": 5, "length": 4, "data_type": "float_ieee754", "unit": "A", "required": true}
+      ]
+    },
+    {
+      "name": "读取模块数",
+      "abbr": "CMD_02_COUNT",
+      "identifier": {"command_number": 2, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 2, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取命令（定点）",
+      "fields": [
+        {"name": "模块数", "byte_start": 1, "length": 1, "data_type": "int_be", "required": true},
+        {"name": "保留", "byte_start": 2, "length": 7, "data_type": "int_be", "required": false}
+      ]
+    },
+    {
+      "name": "读取模块N状态信息",
+      "abbr": "CMD_04_STATUS",
+      "identifier": {"command_number": 4, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 4, "dest_addr": 0, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取命令（定点）",
+      "fields": [
+        {"name": "模块组号", "byte_start": 1, "length": 1, "data_type": "int_be", "required": true},
+        {"name": "模块环温", "byte_start": 2, "length": 1, "data_type": "int_be", "unit": "℃", "required": true},
+        {"name": "输出短路", "byte_start": 3, "length": 1, "bit_start": 0, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "短路"}, "required": true},
+        {"name": "模块休眠", "byte_start": 3, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "休眠"}, "required": true},
+        {"name": "模块放电异常", "byte_start": 3, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "异常"}, "required": true},
+        {"name": "DC侧关机", "byte_start": 4, "length": 1, "bit_start": 0, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "关机"}, "required": true},
+        {"name": "模块故障", "byte_start": 4, "length": 1, "bit_start": 1, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "模块保护", "byte_start": 4, "length": 1, "bit_start": 2, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "风扇故障", "byte_start": 4, "length": 1, "bit_start": 3, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "过温", "byte_start": 4, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "输出过压", "byte_start": 4, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "WALK-IN使能", "byte_start": 4, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "禁止", "1": "使能"}, "required": true},
+        {"name": "通信中断", "byte_start": 4, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "限功率", "byte_start": 5, "length": 1, "bit_start": 0, "bit_len": 1, "data_type": "bits", "enum": {"0": "否", "1": "是"}, "required": true},
+        {"name": "ID重复", "byte_start": 5, "length": 1, "bit_start": 1, "bit_len": 1, "data_type": "bits", "enum": {"0": "否", "1": "是"}, "required": true},
+        {"name": "严重不均流", "byte_start": 5, "length": 1, "bit_start": 2, "bit_len": 1, "data_type": "bits", "enum": {"0": "否", "1": "是"}, "required": true},
+        {"name": "缺相", "byte_start": 5, "length": 1, "bit_start": 3, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "三相不平衡", "byte_start": 5, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "输入欠压", "byte_start": 5, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "输入过压", "byte_start": 5, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
+        {"name": "PFC侧关机", "byte_start": 5, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "关机"}, "required": true}
+      ]
+    },
+    {
+      "name": "读取模块N输入电压",
+      "abbr": "CMD_06_INPUT_V",
+      "identifier": {"command_number": 6, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 6, "dest_addr": 0, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取命令（定点）",
+      "fields": [
+        {"name": "AB电压", "byte_start": 1, "length": 2, "data_type": "int_be", "resolution": 0.1, "unit": "V", "required": true},
+        {"name": "BC电压", "byte_start": 3, "length": 2, "data_type": "int_be", "resolution": 0.1, "unit": "V", "required": true},
+        {"name": "CA电压", "byte_start": 5, "length": 2, "data_type": "int_be", "resolution": 0.1, "unit": "V", "required": true}
+      ]
+    },
+    {
+      "name": "读取系统总电压电流（定点）",
+      "abbr": "CMD_08_SYS_INT",
+      "identifier": {"command_number": 8, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 8, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取命令（定点）",
+      "fields": [
+        {"name": "系统总电压", "byte_start": 1, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mV", "required": true},
+        {"name": "系统总电流", "byte_start": 5, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mA", "required": true}
+      ]
+    },
+    {
+      "name": "读取模块N电压电流（定点）",
+      "abbr": "CMD_09_MOD_INT",
+      "identifier": {"command_number": 9, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 9, "dest_addr": 0, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "读取命令（定点）",
+      "fields": [
+        {"name": "模块N电压", "byte_start": 1, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mV", "required": true},
+        {"name": "模块N电流", "byte_start": 5, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mA", "required": true}
+      ]
+    },
+    {
+      "name": "控制所有模块开关机",
+      "abbr": "CMD_1A_POWER",
+      "identifier": {"command_number": 26, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 26, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "设置命令",
+      "fields": [
+        {"name": "开关机", "byte_start": 1, "length": 1, "data_type": "int_be", "enum": {"0": "开机", "1": "关机"}, "required": true}
+      ]
+    },
+    {
+      "name": "设置所有模块输出电压和总电流",
+      "abbr": "CMD_1B_SET_ALL",
+      "identifier": {"command_number": 27, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 27, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "输出设置",
+      "fields": [
+        {"name": "电压", "byte_start": 1, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mV", "required": true},
+        {"name": "总电流", "byte_start": 5, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mA", "required": true}
+      ]
+    },
+    {
+      "name": "设置单模块输出电压和电流",
+      "abbr": "CMD_1C_SET_ONE",
+      "identifier": {"command_number": 28, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 28, "dest_addr": 0, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "输出设置",
+      "fields": [
+        {"name": "电压", "byte_start": 1, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mV", "required": true},
+        {"name": "电流", "byte_start": 5, "length": 4, "data_type": "int_be", "resolution": 1, "unit": "mA", "required": true}
+      ]
+    },
+    {
+      "name": "读取模块N电压电流限值",
+      "abbr": "CMD_0A_LIMIT",
+      "identifier": {"command_number": 10, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 10, "dest_addr": 0, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "模块读取",
+      "fields": [
+        {"name": "最大电压", "byte_start": 1, "length": 2, "data_type": "int_be", "resolution": 1, "unit": "V", "required": true},
+        {"name": "最小电压", "byte_start": 3, "length": 2, "data_type": "int_be", "resolution": 1, "unit": "V", "required": true},
+        {"name": "最大电流", "byte_start": 5, "length": 2, "data_type": "int_be", "resolution": 0.1, "unit": "A", "required": true}
+      ]
+    },
+    {
+      "name": "Walk-in使能",
+      "abbr": "CMD_13_WALKIN",
+      "identifier": {"command_number": 19, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 19, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "控制设置",
+      "fields": [
+        {"name": "Walk-in使能", "byte_start": 1, "length": 1, "data_type": "int_be", "enum": {"0": "禁止", "1": "使能"}, "required": true}
+      ]
+    },
+    {
+      "name": "绿灯闪烁",
+      "abbr": "CMD_14_LED",
+      "identifier": {"command_number": 20, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 20, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "控制设置",
+      "fields": [
+        {"name": "绿灯闪烁", "byte_start": 1, "length": 1, "data_type": "int_be", "enum": {"0": "正常", "1": "闪烁"}, "required": true}
+      ]
+    },
+    {
+      "name": "组号设置",
+      "abbr": "CMD_16_GROUP",
+      "identifier": {"command_number": 22, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 22, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "控制设置",
+      "fields": [
+        {"name": "组号", "byte_start": 1, "length": 1, "data_type": "int_be", "range": [1, 59], "required": true}
+      ]
+    },
+    {
+      "name": "休眠设置",
+      "abbr": "CMD_19_SLEEP",
+      "identifier": {"command_number": 25, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 25, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "控制设置",
+      "fields": [
+        {"name": "休眠", "byte_start": 1, "length": 1, "data_type": "int_be", "enum": {"0": "不休眠", "1": "休眠"}, "required": true}
+      ]
+    },
+    {
+      "name": "地址分配方式",
+      "abbr": "CMD_1F_ADDR",
+      "identifier": {"command_number": 31, "device_number": 10},
+      "can_id_template": {"error_code": 0, "device_number": 10, "command_number": 31, "dest_addr": 63, "source_addr": 240},
+      "direction": "监控→模块",
+      "cycle_ms": 0,
+      "data_length": 8,
+      "stage": "控制设置",
+      "fields": [
+        {"name": "地址方式", "byte_start": 1, "length": 1, "data_type": "int_be", "enum": {"0": "自动分配", "1": "拨码方式"}, "required": true}
+      ]
+    }
+  ]
+}
