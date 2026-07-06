@@ -1,6 +1,7 @@
 """主窗口 — 协议选择器 + 查询面板 + 解码面板"""
 
 import os
+import sys
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QLabel, QComboBox, QHBoxLayout, QStatusBar, QMessageBox
@@ -13,6 +14,7 @@ from services.can_codec import CanCodec
 from ui.query_panel import QueryPanel
 from ui.decode_panel import DecodePanel
 from ui.encode_panel import EncodePanel
+from ui.parser_panel import ParserPanel
 
 
 class MainWindow(QMainWindow):
@@ -58,6 +60,7 @@ class MainWindow(QMainWindow):
         self.query_panel = None
         self.decode_panel = None
         self.encode_panel = None
+        self.parser_panel = None
         layout.addWidget(self.tab_widget)
 
         # ── 状态栏 ──
@@ -70,8 +73,11 @@ class MainWindow(QMainWindow):
 
     def _load_protocol_by_id(self, protocol_id: str):
         """加载指定协议"""
-        # 构建路径
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # 打包后用 sys._MEIPASS，开发中用工 __file__
+        if getattr(sys, 'frozen', False):
+            base_dir = sys._MEIPASS
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         json_path = os.path.join(base_dir, "data", f"{protocol_id}.json")
 
         if not os.path.exists(json_path):
@@ -107,10 +113,12 @@ class MainWindow(QMainWindow):
             self.query_panel = QueryPanel(self._query, self._codec)
             self.decode_panel = DecodePanel(self._query, self._codec)
             self.encode_panel = EncodePanel(self._query, self._codec)
+            self.parser_panel = ParserPanel(self._query, self._codec)
 
             self.tab_widget.addTab(self.query_panel, "📋 报文查询")
             self.tab_widget.addTab(self.decode_panel, "🔍 单帧解码")
             self.tab_widget.addTab(self.encode_panel, "✏️ 报文编码")
+            self.tab_widget.addTab(self.parser_panel, "📊 Excel 解析")
 
             # 从查询面板选择报文 → 自动填充到编码面板
             self.query_panel.message_selected.connect(self._on_message_selected_for_encode)

@@ -10,7 +10,7 @@
   "can_id_schema": {
     "total_bits": 29,
     "fields": [
-      {"name": "error_code", "bit_start": 26, "bit_len": 3, "description": "错误码"},
+      {"name": "error_code", "bit_start": 26, "bit_len": 3, "description": "错误码", "enum": {"0": "正常", "1": "保留", "2": "命令号异常", "3": "数据信息异常", "4": "地址无效", "7": "启动过程中"}},
       {"name": "device_number", "bit_start": 22, "bit_len": 4, "description": "设备号"},
       {"name": "command_number", "bit_start": 16, "bit_len": 6, "description": "命令号"},
       {"name": "dest_addr", "bit_start": 8, "bit_len": 8, "description": "目的地址"},

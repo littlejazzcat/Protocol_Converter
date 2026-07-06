@@ -185,7 +185,11 @@ class DecodePanel(QWidget):
         id_lines = [f"CAN ID: 0x{can_id:08X}"]
         for f in self.query.protocol.can_id_schema.fields:
             val = id_info.get(f.name, "?")
-            id_lines.append(f"  {f.name}: {id_info.get(f'{f.name}_hex', val)} ({f.description})")
+            label = id_info.get(f"{f.name}_label", "")
+            desc = f.description
+            if label:
+                desc = f"{desc} → {label}"
+            id_lines.append(f"  {f.name}: {id_info.get(f'{f.name}_hex', val)} ({desc})")
 
         # 匹配报文（协议无关）
         msg = self.query.by_can_id(can_id, data_bytes)
@@ -265,7 +269,7 @@ class DecodePanel(QWidget):
             unit = field.unit or ""
             return f"{value} {unit}".strip()
         if isinstance(value, int) and field.unit:
-            return f"{value} {unit}"
+            return f"{value} {field.unit}"
         return str(value)
 
     def _set_preset(self, can_id: str, data: str):

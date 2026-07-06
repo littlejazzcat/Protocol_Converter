@@ -25,5 +25,13 @@ venv/
 htmlcov/
 .coverage
 
-# Temp
-_fix_nibble.py
+# Project internal (测试数据 / issue / 更新日志 / 需求文档)
+tests/
+issue/
+update/
+需求/
+
+# PyInstaller
+build/
+dist/
+*.spec
