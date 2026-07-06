@@ -121,6 +121,9 @@ class QueryEngine:
             val = (can_id & mask) >> f.bit_start
             result[f.name] = val
             result[f"{f.name}_hex"] = f"0x{val:0{(f.bit_len + 3) // 4}X}"
+            # 枚举标签（用于 can_id_schema 中带 enum 的字段，如 error_code）
+            if f.enum:
+                result[f"{f.name}_label"] = f.enum.get(val, "?")
         return result
 
     def by_stage(self, stage: str) -> List[MessageDef]:

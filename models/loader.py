@@ -30,6 +30,7 @@ def _parse_protocol(raw: dict) -> ProtocolDefinition:
                 bit_len=f["bit_len"],
                 description=f.get("description", ""),
                 fixed_value=f.get("fixed_value"),
+                enum={int(k): v for k, v in f.get("enum", {}).items()} if f.get("enum") else None,
             )
             for f in schema_raw.get("fields", [])
         ],

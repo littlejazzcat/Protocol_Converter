@@ -91,6 +91,7 @@ class CanIdField:
     bit_len: int
     description: str = ""
     fixed_value: Optional[int] = None
+    enum: Optional[Dict[int, str]] = None  # 枚举值 → 描述
 
 
 @dataclass

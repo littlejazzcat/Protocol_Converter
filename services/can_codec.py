@@ -155,6 +155,8 @@ class CanCodec:
                 for f in fields:
                     if f.name in params:
                         raw_val = self._resolve_enum_value(f, params[f.name])
+                        if isinstance(raw_val, float):
+                            raw_val = int(raw_val)
                         mask = ((1 << f.bit_len) - 1) << f.bit_start
                         byte_val = (byte_val & ~mask) | ((raw_val << f.bit_start) & mask)
                 if byte_idx < len(data):
