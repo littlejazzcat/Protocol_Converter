@@ -17,6 +17,17 @@ from services.excel_parser import ExcelParser
 
 # ── 初始化 ──────────────────────────────────────
 
+VERSION = "v1.2.0"
+# 更新源仓库（待建，格式: "用户名/仓库名"）
+REPO = ""
+SOURCES = [
+    {"name": "GitHub", "api": "https://api.github.com/repos/{repo}/releases/latest"},
+    {"name": "Gitee", "api": "https://gitee.com/api/v5/repos/{repo}/releases/latest"},
+]
+
+_update_info = {"available": False, "latest": "", "changelog": "", "download_url": "", "error": ""}
+_download_state = {"active": False, "progress": 0, "downloaded": 0, "total": 0, "path": "", "error": ""}
+
 BASE_DIR = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 TEMPLATE_DIR = BASE_DIR / "templates"
@@ -71,27 +82,27 @@ ALL_PROTOS = state["protocols"]
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return render("index.html", protocols=ALL_PROTOS, current_id=CUR())
+    return render("index.html", protocols=ALL_PROTOS, current_id=CUR(), version=VERSION)
 
 
 @app.get("/query", response_class=HTMLResponse)
 async def query_page(request: Request):
-    return render("index.html", protocols=ALL_PROTOS, current_id=CUR())
+    return render("index.html", protocols=ALL_PROTOS, current_id=CUR(), version=VERSION)
 
 
 @app.get("/decode", response_class=HTMLResponse)
 async def decode_page(request: Request):
-    return render("index.html", protocols=ALL_PROTOS, current_id=CUR())
+    return render("index.html", protocols=ALL_PROTOS, current_id=CUR(), version=VERSION)
 
 
 @app.get("/encode", response_class=HTMLResponse)
 async def encode_page(request: Request):
-    return render("index.html", protocols=ALL_PROTOS, current_id=CUR())
+    return render("index.html", protocols=ALL_PROTOS, current_id=CUR(), version=VERSION)
 
 
 @app.get("/parse", response_class=HTMLResponse)
 async def parse_page(request: Request):
-    return render("index.html", protocols=ALL_PROTOS, current_id=CUR())
+    return render("index.html", protocols=ALL_PROTOS, current_id=CUR(), version=VERSION)
 
 
 # ── API ──────────────────────────────────────────
@@ -292,6 +303,105 @@ async def api_parse_export():
     parser.export(path)
     return FileResponse(path, filename="parsed_result.xlsx",
                         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ── 自更新 ─────────────────────────────────────────
+
+def _check_update_sync(source_name: str = "") -> dict:
+    """同步检测最新版本（GitHub → Gitee 双源容错）"""
+    if not REPO:
+        return {"available": False, "error": "未配置仓库地址"}
+    import httpx
+    from packaging.version import Version
+
+    names = [source_name] if source_name else [s["name"] for s in SOURCES]
+    last_err = ""
+    for src in SOURCES:
+        if src["name"] not in names:
+            continue
+        try:
+            r = httpx.get(src["api"].format(repo=REPO), timeout=10)
+            if r.status_code != 200:
+                last_err = f"{src['name']} HTTP {r.status_code}"
+                continue
+            data = r.json()
+            latest_tag = data.get("tag_name", "")
+            if not latest_tag:
+                last_err = f"{src['name']} 无 tag"
+                continue
+            # 挑 zip 资产
+            asset_url = ""
+            for a in data.get("assets", []) or []:
+                name = a.get("name", "")
+                if name.lower().endswith(".zip"):
+                    asset_url = a.get("browser_download_url", "")
+                    break
+            try:
+                available = Version(latest_tag.lstrip("v")) > Version(VERSION.lstrip("v"))
+            except Exception:
+                available = latest_tag != VERSION
+            return {
+                "available": available,
+                "latest": latest_tag,
+                "current": VERSION,
+                "changelog": (data.get("body") or "")[:500],
+                "download_url": asset_url,
+                "source": src["name"],
+                "error": "",
+            }
+        except Exception as e:
+            last_err = f"{src['name']}: {e}"
+            continue
+    return {"available": False, "error": f"检测失败: {last_err}"}
+
+
+@app.get("/api/check-update")
+async def api_check_update(source: str = ""):
+    result = _check_update_sync(source)
+    _update_info.update(result)
+    return result
+
+
+@app.get("/api/download-progress")
+async def api_download_progress():
+    return _download_state
+
+
+@app.post("/api/do-update")
+async def api_do_update():
+    if _download_state["active"]:
+        return {"ok": False, "error": "已有下载任务进行中"}
+    if not _update_info.get("download_url"):
+        return {"ok": False, "error": "未找到下载地址，请先检测更新"}
+    import httpx
+
+    latest = _update_info.get("latest", "latest")
+    dl_dir = Path.home() / "Downloads"
+    dl_dir.mkdir(exist_ok=True)
+    dst = dl_dir / f"ProtocolConverter_{latest}.zip"
+
+    _download_state.update({"active": True, "progress": 0, "downloaded": 0,
+                            "total": 0, "path": str(dst), "error": ""})
+    try:
+        with httpx.Client(timeout=300, follow_redirects=True) as client:
+            with client.stream("GET", _update_info["download_url"]) as resp:
+                total = int(resp.headers.get("content-length", 0))
+                _download_state["total"] = total
+                downloaded = 0
+                with open(dst, "wb") as f:
+                    for chunk in resp.iter_bytes(chunk_size=65536):
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        _download_state["downloaded"] = downloaded
+                        if total > 0:
+                            _download_state["progress"] = int(downloaded / total * 100)
+        _download_state["progress"] = 100
+        return {"ok": True, "path": str(dst), "latest": latest}
+    except Exception as e:
+        _download_state["error"] = str(e)
+        return {"ok": False, "error": str(e)}
+    finally:
+        _download_state["active"] = False
 
 
 # ── 辅助 ─────────────────────────────────────────
