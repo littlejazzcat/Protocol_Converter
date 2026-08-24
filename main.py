@@ -1,21 +1,14 @@
-"""Protocol Converter — GB/T 27930 CAN 报文解析工具"""
+"""Protocol Converter — FastAPI 启动入口"""
+import uvicorn
+import webbrowser
+import threading
+import time
+from app import app
 
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from PySide6.QtWidgets import QApplication
-from ui.main_window import MainWindow
-
-
-def main():
-    app = QApplication(sys.argv)
-    app.setApplicationName("Protocol Converter")
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
-
+def open_browser():
+    time.sleep(1)
+    webbrowser.open("http://127.0.0.1:8027")
 
 if __name__ == "__main__":
-    main()
+    threading.Thread(target=open_browser, daemon=True).start()
+    uvicorn.run(app, host="127.0.0.1", port=8027, reload=False)

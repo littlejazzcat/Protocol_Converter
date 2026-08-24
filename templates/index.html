@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Protocol Converter v1.2</title>
+<style>
+:root{--bg:#f0f2f5;--card:#fff;--border:#e2e5ea;--text:#1e293b;--muted:#8896a4;--accent:#3b82f6;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--dark:#0f172a;--dark2:#1e293b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:13px/1.5 'Microsoft YaHei','Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{background:var(--dark);display:flex;align-items:center;height:44px;padding:0 16px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.topbar .logo{color:#fff;font-size:15px;font-weight:700;margin-right:6px}.topbar .ver{color:var(--muted);font-size:11px;margin-right:16px}
+.topbar .tabs{display:flex;gap:2px;flex:1}
+.topbar .tabs button{background:none;color:#94a3b8;border:none;padding:6px 18px;cursor:pointer;font-size:12.5px;border-radius:6px 6px 0 0;font-family:inherit}.topbar .tabs button:hover{color:#e2e8f0;background:rgba(255,255,255,.06)}.topbar .tabs button.active{color:#fff;background:rgba(255,255,255,.12);font-weight:600}
+.proto-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+.proto-wrap select{padding:3px 8px;border-radius:4px;border:1px solid #475569;font-size:11.5px;background:var(--dark2);color:#e2e8f0;cursor:pointer;outline:none;font-family:inherit}
+.main{flex:1;display:flex;overflow:hidden}
+.panel{display:none;flex:1;overflow:auto;padding:12px 16px}.panel.active{display:flex;flex-direction:column}
+.card{background:var(--card);border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.03);flex-shrink:0}
+.card h2{font-size:13.5px;font-weight:600;margin-bottom:8px;color:var(--dark)}.card h2 .sub{font-weight:400;font-size:11.5px;color:var(--muted);margin-left:6px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#f8f9fb;text-align:left;padding:7px 10px;border-bottom:2px solid var(--border);font-weight:600;color:#555;white-space:nowrap;font-size:12px;position:sticky;top:0;z-index:2}
+td{padding:6px 10px;border-bottom:1px solid #f1f3f5}tr:hover td{background:#f8f9ff}
+input,select,textarea,button{font-family:inherit;font-size:12.5px}input,select{border:1px solid #d0d5dd;border-radius:5px;padding:6px 10px;outline:none}input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.1)}input.locked{background:#f1f5f9;color:#94a3b8;border-style:dashed}
+.btn{padding:6px 14px;border:none;border-radius:5px;cursor:pointer;font-weight:600;font-size:12.5px}.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#2563eb}.btn-success{background:var(--green);color:#fff}.btn-success:hover{background:#059669}.btn-sm{padding:3px 10px;font-size:11.5px}
+.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;margin:1px 2px}.t-blue{background:#eff6ff;color:#2563eb}.t-green{background:#ecfdf5;color:#059669}.t-red{background:#fef2f2;color:#dc2626}.t-orange{background:#fffbeb;color:#d97706}.t-gray{background:#f1f5f9;color:#64748b}
+.badge{display:inline-block;padding:0 6px;border-radius:8px;font-size:10px;background:#e2e8f0;color:#64748b;margin-left:4px}
+.mono{font-family:'Cascadia Code',Consolas,'Courier New',monospace;font-size:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}.row label{white-space:nowrap;color:var(--muted)}
+.scroll-y{overflow-y:auto;flex:1;min-height:0}
+.msg{font-size:12px;padding:6px 10px;border-radius:4px;margin-top:6px}.msg-info{background:#eff6ff;color:#2563eb}.msg-ok{background:#ecfdf5;color:#059669}.msg-err{background:#fef2f2;color:#dc2626}.msg-warn{background:#fffbeb;color:#d97706}
+.query-layout{display:grid;grid-template-columns:290px 1fr;gap:10px;flex:1;overflow:hidden}@media(max-width:900px){.query-layout{grid-template-columns:1fr}}
+.tree-stage{padding:4px 0;cursor:pointer;user-select:none;transition:.1s}.tree-stage:hover{color:var(--accent)}.tree-stage .arr{font-size:9px;margin-right:4px;display:inline-block;width:12px;text-align:center;transition:.15s;color:var(--muted)}.tree-stage .arr.open{transform:rotate(90deg)}.tree-stage .sname{font-weight:600;font-size:12.5px}.tree-msg{padding:3px 6px 3px 22px;cursor:pointer;border-radius:3px;font-size:12px;color:#555;transition:.1s;display:flex;align-items:flex-start;gap:4px}.tree-msg:hover{background:#eff6ff;color:var(--accent)}.tree-msg.active{background:#eff6ff;color:var(--accent);font-weight:600}.tree-msg .mname{flex:1;line-height:1.4}.tree-msg .mabbr{font-weight:700;font-family:Consolas,monospace;font-size:11.5px;white-space:nowrap}.tree-msg .mpf{font-size:10px;color:var(--muted);font-family:Consolas,monospace;white-space:nowrap;margin-left:auto}
+.search-box{display:flex;gap:6px;margin-bottom:8px}.search-box input{flex:1;max-width:320px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12.5px}.detail-grid .lbl{color:var(--muted);font-size:11px}.detail-grid .val{font-weight:600}
+.field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-top:8px}.fitem{background:#f8fafc;border-radius:6px;padding:8px 10px;border:1px solid #e8ecf1}.fitem .fn{font-size:11px;color:var(--muted);margin-bottom:2px}.fitem .fv{font-size:13px;font-weight:600}
+.color-bar{display:flex;height:28px;border-radius:4px;overflow:hidden;gap:2px;margin:6px 0}.color-seg{display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700;cursor:pointer;position:relative;transition:transform .1s}.color-seg:hover{transform:scaleY(1.3);z-index:5}.color-seg::after{content:attr(tip);position:absolute;bottom:120%;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:.15s}.color-seg:hover::after{opacity:1}
+.progress{width:100%;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin:6px 0}.progress .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:3px;transition:width .5s}
+.pagination{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:8px}
+.pagination button{padding:3px 10px;font-size:11.5px;border-radius:4px;border:1px solid #ddd;background:#fff;cursor:pointer;font-family:inherit}
+.pagination button:disabled{opacity:.4;cursor:default}
+#encode-tbl{max-height:350px;overflow:auto}
+</style></head><body>
+<div class="topbar">
+  <span class="logo">&#9889; Protocol Converter</span><span class="ver">v1.2</span>
+  <div class="tabs">
+    <button class="active" data-panel="query">&#128269; 协议查询</button>
+    <button data-panel="decode">&#128273; 帧解码</button>
+    <button data-panel="parse">&#128196; 批量解析</button>
+  </div>
+  <div class="proto-wrap"><select id="proto-sel"></select></div>
+</div>
+<div class="main">
+<div class="panel active" id="panel-query"><div class="query-layout">
+  <div class="card scroll-y"><h2>消息树</h2><div id="tree"></div></div>
+  <div style="overflow-y:auto;flex:1;padding-right:4px">
+    <div class="card" id="detail-card" style="display:none">
+      <h2 id="detail-title">报文详情</h2>
+      <div class="detail-grid" id="detail-grid"></div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">字段定义</div>
+        <div id="detail-fields" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px 12px"></div>
+      </div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">帧编码</div>
+        <div id="encode-tbl"><table><thead><tr><th>字段</th><th>位置</th><th>类型</th><th>单位</th><th>值</th></tr></thead><tbody id="e-body"></tbody></table></div>
+        <div style="margin-top:8px"><button class="btn btn-success btn-sm" onclick="doEncode()">生成</button><span id="e-output" style="margin-left:10px;font-size:12px" class="mono"></span><span id="e-tp-out" style="margin-left:10px;font-size:12px"></span></div>
+      </div>
+    </div>
+    <div class="card"><h2>搜索</h2><div class="search-box"><input id="kw" placeholder="报文缩写/名称/SPN..." onkeyup="if(event.key==='Enter')search()"><button class="btn btn-sm btn-primary" onclick="search()">搜索</button></div><div id="search-res"></div></div>
+  </div>
+</div></div>
+<div class="panel" id="panel-decode">
+  <div class="card"><h2>CAN 帧解码</h2><div class="row"><label>CAN ID:</label><input id="d-cid" placeholder="182756F4" style="width:160px" onkeyup="if(event.key==='Enter')decode()"><label>数据域:</label><input id="d-hex" placeholder="10 27" style="width:240px" onkeyup="if(event.key==='Enter')decode()"><label><input type="checkbox" id="d-tp"> TP重组</label><button class="btn btn-primary" onclick="decode()">解码</button></div></div>
+  <div class="card" id="id-box" style="display:none"><h2>CAN ID 位域</h2><div id="colorbar"></div><div id="id-tags" style="display:flex;gap:4px;flex-wrap:wrap"></div></div>
+  <div class="card" id="res-box" style="display:none"><h2>解码结果</h2><div id="res-msg"></div><div class="field-grid" id="res-grid"></div></div>
+</div>
+<div class="panel" id="panel-parse">
+  <div class="card" style="display:none" id="pprog"><h2>解析中...</h2><div class="progress"><div class="fill" style="width:0" id="pprog-fill"></div></div></div>
+  <div class="card"><h2>批量解析</h2>
+    <div class="row"><label>上传文件:</label><input type="file" id="p-file" accept=".csv,.xlsx,.xls" style="flex:1;max-width:400px"><button class="btn btn-primary" onclick="parseUpload()">上传并预览</button></div>
+    <div class="row" style="margin-top:4px"><label>或输入路径:</label><input type="text" id="p-path" placeholder="E:\data\抓包.xlsx（EFS加密文件请用此方式）" style="flex:1;max-width:420px"><button class="btn btn-primary btn-sm" onclick="parsePath()">加载</button></div>
+  </div>
+  <div class="card" id="pprev-box" style="display:none"><h2>预览 <span id="pprev-info" class="sub"></span></h2><div class="scroll-y" style="max-height:300px"><table><thead id="pprev-head"></thead><tbody id="pprev-body"></tbody></table></div><div class="row" style="margin-top:8px"><span id="pmap" style="font-weight:600;font-size:12px"></span><button class="btn btn-success" id="p-parse-btn" onclick="parseRun()">开始解析</button></div></div>
+  <div class="card" id="pres-box" style="display:none"><h2>解析结果 <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="window.open('/api/parse/export')">导出Excel</button></h2><div id="pres-sum"></div><div class="scroll-y" style="max-height:420px"><table><thead id="pres-head"></thead><tbody id="pres-body"></tbody></table></div><div class="pagination" id="pres-pag"></div></div>
+</div>
+</div>
+<script>
+const PROTOCOLS={{protocols|tojson}},CUR="{{current_id}}";
+let page='query',curEnc=null,parsedData=null,PG=100;
+
+document.getElementById('proto-sel').onchange=function(){switchProto(this.value)};
+(function(){
+  const s=document.getElementById('proto-sel');
+  for(const[k,v]of Object.entries(PROTOCOLS)){const o=document.createElement('option');o.value=k;o.text=v;if(k===CUR)o.selected=true;s.appendChild(o)}
+  switchTab('query');
+})();
+async function switchProto(t){await fetch('/api/protocol/select',{method:'POST',body:new URLSearchParams({protocol_id:t})});location.reload()}
+function switchTab(t){
+  page=t;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.panel===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
+  if(t==='query'&&!document.getElementById('tree').children.length)loadTree();
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.panel));
+
+async function loadTree(){
+  const r=await fetch('/api/messages/tree'),stages=await r.json(),el=document.getElementById('tree');el.innerHTML='';
+  const is27930=CUR==='gbt27930_v1.1';
+  stages.forEach(s=>{
+    const h=document.createElement('div');h.className='tree-stage';h.innerHTML='<span class="arr open">&#9654;</span><span class="sname">'+s.name+'</span><span class="badge">'+s.messages.length+'</span>';
+    const c=document.createElement('div');
+    s.messages.forEach(m=>{
+      const mi=document.createElement('div');mi.className='tree-msg';mi.innerHTML=is27930?'<span class="mabbr">'+m.abbr+'</span><span class="mname">'+m.name+'</span><span class="mpf">0x'+(m.pf?m.pf.toString(16):'-')+'</span>':'<span class="mname">'+m.name+'</span><span class="mabbr">['+m.abbr+']</span><span class="mpf">0x'+(m.pf?m.pf.toString(16):'-')+'</span>';
+      mi.onclick=(e)=>{e.stopPropagation();showDetail(m);document.querySelectorAll('.tree-msg').forEach(x=>x.classList.remove('active'));mi.classList.add('active')};c.appendChild(mi)
+    });
+    h.onclick=()=>{const v=c.style.display!=='block';c.style.display=v?'block':'none';h.querySelector('.arr').classList.toggle('open',v)};
+    el.appendChild(h);el.appendChild(c);c.style.display='block'
+  });
+}
+async function showDetail(m){
+  const r=await fetch('/api/messages?keyword='+m.abbr),msgs=await r.json();if(!msgs.length)return;
+  const msg=msgs[0];const d=document.getElementById('detail-card');d.style.display='';
+  document.getElementById('detail-title').textContent=msg.abbr+' — '+msg.name;
+  document.getElementById('detail-grid').innerHTML='<div><span class="lbl">方向</span><br><span class="val">'+msg.direction+'</span></div><div><span class="lbl">阶段</span><br><span class="val">'+msg.stage+'</span></div><div><span class="lbl">PF</span><br><span class="val mono">0x'+(msg.pf?msg.pf.toString(16):'-')+' ('+msg.pf+')</span></div><div><span class="lbl">数据长度</span><br><span class="val">'+msg.data_length+' bytes'+(msg.tp?' <span class="tag t-orange">TP</span>':'')+'</span></div>';
+  document.getElementById('e-output').textContent='';document.getElementById('e-tp-out').innerHTML='';
+  const er=await fetch('/api/encode',{method:'POST',body:new URLSearchParams({msg_abbr:m.abbr})});
+  const enc=await er.json();
+  if(!enc.error){
+    curEnc=enc;
+    document.getElementById('detail-fields').innerHTML=enc.fields.map(f=>'<div style="font-size:11.5px"><span class="mono" style="color:var(--accent)">'+f.name+'</span> <span style="color:var(--muted)">B'+f.byte_start+'('+f.length+') '+f.data_type+(f.unit?' '+f.unit:'')+'</span>'+(f.spn?' <small>SPN:'+f.spn+'</small>':'')+'</div>').join('');
+    const defv=f=>{if(f.default_value!==null&&f.default_value!==undefined&&f.default_value!=='')return f.default_value;if(f.offset&&f.offset!==0)return f.offset;if(f.enum&&Object.keys(f.enum).length)return Object.keys(f.enum)[0];return 0};
+    let h='';enc.fields.forEach(f=>{const lk=!f.editable;h+='<tr><td class="mono">'+f.name+(f.spn?' <small style="color:var(--muted)">SPN:'+f.spn+'</small>':'')+'</td><td>B'+f.byte_start+'('+f.length+')</td><td class="mono">'+f.data_type+(f.resolution?' ×'+f.resolution:'')+'</td><td>'+(f.unit||'—')+'</td><td><input type="text" value="'+defv(f)+'" style="width:70px" data-n="'+f.name+'"'+(lk?' class="locked" readonly':'')+'></td></tr>'});
+    document.getElementById('e-body').innerHTML=h;
+  }
+}
+async function search(){const kw=document.getElementById('kw').value.trim();if(!kw)return;const r=await fetch('/api/messages?keyword='+kw),msgs=await r.json();document.getElementById('search-res').innerHTML=msgs.length?'<table><tr><th>缩写</th><th>名称</th><th>阶段</th><th>PF</th><th>方向</th></tr>'+msgs.map(m=>'<tr style="cursor:pointer" onclick="showDetail({abbr:\''+m.abbr+'\',pf:'+m.pf+'})"><td class="mono">'+m.abbr+'</td><td>'+m.name+'</td><td>'+m.stage+'</td><td class="mono">0x'+(m.pf?m.pf.toString(16):'')+'</td><td>'+m.direction+'</td></tr>').join('')+'</table>':'<div style="color:var(--muted);padding:16px;text-align:center">无匹配结果</div>'}
+async function doEncode(){
+  if(!curEnc)return;const v={};document.querySelectorAll('#e-body input').forEach(i=>{v[i.dataset.n]=parseFloat(i.value)||0});
+  const fd=new FormData();fd.append('msg_abbr',document.getElementById('detail-title').textContent.split(' — ')[0]);fd.append('field_values',JSON.stringify(v));
+  const r=await(await fetch('/api/encode/build',{method:'POST',body:fd})).json();
+  if(r.error){alert(r.error);return}
+  document.getElementById('e-output').textContent='CAN: '+r.can_id_hex+' | 数据: '+r.data_hex;
+  let tp='';
+  if(r.tp_frames&&r.tp_frames.length){tp+=' <span class="tag t-orange">TP分包 '+r.tp_frames.length+'帧</span><div class="scroll-y" style="max-height:200px;margin-top:6px"><table><tr><th>帧</th><th>类型</th><th>CAN ID</th><th>数据</th></tr>'+r.tp_frames.map((f,i)=>'<tr><td>'+(i+1)+'</td><td class="mono">'+f.type+'</td><td class="mono">'+f.id+'</td><td class="mono">'+f.data+'</td></tr>').join('')+'</table></div>';}
+  document.getElementById('e-tp-out').innerHTML=tp;
+}
+const COLORS=['#ef4444','#f59e0b','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#64748b','#06b6d4','#84cc16'];
+async function decode(){
+  const cid=document.getElementById('d-cid').value.trim(),dhex=document.getElementById('d-hex').value.trim();if(!cid)return;
+  const fd=new FormData();fd.append('can_id',cid);fd.append('data',dhex);fd.append('tp_mode',document.getElementById('d-tp').checked?'true':'false');
+  const r=await(await fetch('/api/decode',{method:'POST',body:fd})).json();
+  if(r.error){alert(r.error);return}
+  document.getElementById('id-box').style.display='';document.getElementById('res-box').style.display='';
+  let bar='';const segs=r.id_detail||[];segs.forEach((f,i)=>{const pct=(f.value!==undefined?(f.name==='priority'?3:1)/29*100:0).toFixed(1);if(pct>0)bar+='<div class="color-seg" tip="'+f.name+'='+f.value+'('+f.hex+')'+(f.desc?' '+f.desc:'')+'" style="background:'+COLORS[i%COLORS.length]+';width:'+pct+'%">'+f.name+'</div>'});
+  document.getElementById('colorbar').innerHTML=bar;
+  document.getElementById('id-tags').innerHTML=segs.map(f=>'<span class="tag t-blue">'+f.name+'='+f.value+'('+f.hex+')'+(f.desc?' '+f.desc:'')+'</span>').join('')+(r.direction?' <span class="tag t-green" style="font-weight:bold">'+r.direction+'</span>':'');
+  document.getElementById('res-msg').innerHTML=r.message==='UNKNOWN'?'<div class="msg msg-err">未识别报文</div>':'<div class="msg msg-ok">'+r.message+' — '+r.message_name+'</div>';
+  document.getElementById('res-grid').innerHTML=(r.fields||[]).map(f=>'<div class="fitem"><div class="fn">'+f.name+'</div><div class="fv mono">'+f.value+'<small style="font-size:11px;color:var(--muted);margin-left:4px">'+(f.unit||'')+'</small></div></div>').join('');
+}
+async function parsePath(){
+  let path=document.getElementById('p-path').value.trim().replace(/^["']|["']$/g,'');if(!path)return;
+  parsedData=null;document.getElementById('pres-box').style.display='none';document.getElementById('p-parse-btn').disabled=false;
+  const r=await(await fetch('/api/parse/path?path='+encodeURIComponent(path))).json();
+  if(r.error){alert(r.error);return}
+  document.getElementById('pprev-box').style.display='';document.getElementById('pprev-info').textContent=r.row_count+' 行 · '+r.columns.length+' 列';
+  document.getElementById('pprev-head').innerHTML='<tr>'+r.columns.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  document.getElementById('pprev-body').innerHTML=r.preview.map(row=>'<tr>'+r.columns.map(c=>'<td>'+(row[c]||'')+'</td>').join('')+'</tr>').join('');
+  document.getElementById('pmap').innerHTML='CAN ID: <span class="tag '+(r.id_col?'t-green':'t-red')+'">'+(r.id_col||'未识别')+'</span> | 数据: <span class="tag '+(r.data_col?'t-green':'t-red')+'">'+(r.data_col||'未识别')+'</span>';
+  document.getElementById('p-parse-btn').style.display=r.id_col&&r.data_col?'':'none';
+}
+async function parseUpload(){
+  const f=document.getElementById('p-file').files[0];if(!f)return;const fd=new FormData();fd.append('file',f);
+  parsedData=null;document.getElementById('pres-box').style.display='none';document.getElementById('p-parse-btn').disabled=false;
+  const r=await(await fetch('/api/parse/upload',{method:'POST',body:fd})).json();if(r.error){alert(r.error);return}
+  document.getElementById('pprev-box').style.display='';document.getElementById('pprev-info').textContent=r.row_count+' 行 · '+r.columns.length+' 列';
+  document.getElementById('pprev-head').innerHTML='<tr>'+r.columns.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  document.getElementById('pprev-body').innerHTML=r.preview.map(row=>'<tr>'+r.columns.map(c=>'<td>'+(row[c]||'')+'</td>').join('')+'</tr>').join('');
+  document.getElementById('pmap').innerHTML='CAN ID: <span class="tag '+(r.id_col?'t-green':'t-red')+'">'+(r.id_col||'未识别')+'</span> | 数据: <span class="tag '+(r.data_col?'t-green':'t-red')+'">'+(r.data_col||'未识别')+'</span>';
+  document.getElementById('p-parse-btn').style.display=r.id_col&&r.data_col?'':'none';
+}
+async function parseRun(){
+  document.getElementById('pprog').style.display='';document.getElementById('pprog-fill').style.width='25%';document.getElementById('p-parse-btn').disabled=true;
+  const r=await(await fetch('/api/parse/run',{method:'POST'})).json();if(r.error){alert(r.error);return}
+  document.getElementById('pprog-fill').style.width='100%';setTimeout(()=>document.getElementById('pprog').style.display='none',500);
+  parsedData=r.results;document.getElementById('pres-box').style.display='';showPage(0);
+}
+function showPage(p){
+  const s=p*PG,chunk=parsedData.slice(s,s+PG);const cols=['CAN ID','数据域','CAN ID 解析','报文','解析结果'];
+  document.getElementById('pres-head').innerHTML='<tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  document.getElementById('pres-body').innerHTML=chunk.map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]||'')+'</td>').join('')+'</tr>').join('');
+  const tot=parsedData.length,mat=parsedData.filter(r=>r['报文']&&r['报文']!=='UNKNOWN'&&r['报文']!=='ERROR').length,unk=parsedData.filter(r=>r['报文']==='UNKNOWN').length,err=parsedData.filter(r=>r['报文']==='ERROR').length;
+  document.getElementById('pres-sum').innerHTML='<span class="tag t-blue">共 '+tot+'</span><span class="tag t-green">匹配 '+mat+'</span><span class="tag t-orange">未知 '+unk+'</span><span class="tag t-red">错误 '+err+'</span>';
+  const pages=Math.ceil(tot/PG);
+  let nav='';
+  nav+='<button onclick="showPage(0)"'+(p===0?' disabled':'')+'>&laquo;</button>';
+  nav+='<button onclick="showPage('+(p-1)+')"'+(p===0?' disabled':'')+'>&lsaquo;</button>';
+  nav+=' <input type="number" id="page-input" value="'+(p+1)+'" min="1" max="'+pages+'" style="width:50px;text-align:center;padding:4px" onkeydown="if(event.key===\'Enter\')jumpPage()"> / '+pages;
+  nav+=' <button onclick="showPage('+(p+1)+')"'+(p>=pages-1?' disabled':'')+'>&rsaquo;</button>';
+  nav+='<button onclick="showPage('+(pages-1)+')"'+(p>=pages-1?' disabled':'')+'>&raquo;</button>';
+  document.getElementById('pres-pag').innerHTML=nav;
+}
+function jumpPage(){const inp=document.getElementById('page-input');if(!inp)return;const v=parseInt(inp.value);if(v>=1&&v<=Math.ceil(parsedData.length/PG))showPage(v-1)}
+</script></body></html>

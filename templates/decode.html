@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>帧解码 - Protocol Converter</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font:13px/1.5 'Microsoft YaHei','Segoe UI',sans-serif;background:#f0f2f5;color:#2c3e50}.topbar{background:#1a1a2e;color:#e0e0e0;padding:0 16px;display:flex;align-items:center;height:44px}.topbar h1{font-size:15px;margin-right:20px;color:#fff}.nav{display:flex;gap:1px}.nav a{color:#a0aec0;text-decoration:none;padding:6px 16px;border-radius:6px 6px 0 0;font-size:12.5px}.nav a:hover,.nav a.active{color:#fff;background:rgba(255,255,255,.12);font-weight:600}.spacer{flex:1}.proto-sel select{padding:3px 8px;border-radius:4px;border:1px solid #3d4f6b;font-size:11.5px;background:#2a3a55;color:#e0e0e0}.main{padding:12px 16px;max-width:1100px;margin:0 auto}.card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #e8eaed;margin-bottom:10px}.card h2{font-size:14px;font-weight:600;color:#1a1a2e;margin-bottom:8px}table{width:100%;border-collapse:collapse;font-size:12.5px}th{background:#f5f6f8;padding:7px 10px;border-bottom:2px solid #e0e3e8;font-weight:600;color:#555;white-space:nowrap;font-size:12px;text-align:left}td{padding:6px 10px;border-bottom:1px solid #f2f3f5}tr:hover td{background:#f8f9ff}input,select,button{font-family:inherit;font-size:12.5px}input{border:1px solid #d0d5dd;border-radius:5px;padding:6px 10px;outline:0}input:focus{border-color:#4a90d9;box-shadow:0 0 0 3px rgba(74,144,217,.1)}button{cursor:pointer;font-weight:600;border:0;border-radius:5px;padding:6px 16px}.btn-primary{background:#4a90d9;color:#fff}.btn-primary:hover{background:#357ac0}.btn-sm{padding:4px 10px;font-size:11.5px}.mono{font-family:'Cascadia Code',Consolas,monospace;font-size:12px}.row-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}.row-inline label{white-space:nowrap;color:#555;font-size:12.5px}.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;margin:1px 2px}.tag-blue{background:#e8f0fe;color:#1967d2}.tag-green{background:#e6f4ea;color:#137333}.msg-info{padding:6px 10px;border-radius:4px;font-size:12px}.msg-info.success{background:#e6f4ea;color:#137333}.msg-info.error{background:#fce8e6;color:#c5221f}.msg-info.warn{background:#fef7e0;color:#b06000}.color-bar{display:flex;height:22px;border-radius:4px;overflow:hidden;gap:1px;margin:6px 0}.color-seg{display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:600;cursor:pointer;position:relative;transition:transform .1s}.color-seg:hover{transform:scaleY(1.3);z-index:5}.color-seg::after{content:attr(data-tip);position:absolute;bottom:120%;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:3px 7px;border-radius:4px;font-size:10px;white-space:nowrap;opacity:0;pointer-events:none;transition:.15s}.color-seg:hover::after{opacity:1}.field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin-top:8px}.field-item{background:#f8f9fb;border-radius:6px;padding:8px 10px;border:1px solid #eee}.field-item .fl{font-size:11px;color:#888}.field-item .fv{font-size:13px;font-weight:600}.collapse-box{margin-top:8px}.collapse-box h3{cursor:pointer;font-size:12.5px;font-weight:600;color:#555;padding:4px 0;user-select:none}.collapse-box h3 span{font-size:10px;margin-right:4px;transition:.2s;display:inline-block}.collapse-box h3.open span{transform:rotate(90deg)}.collapse-body{overflow:hidden;max-height:0;transition:.3s}.collapse-body.show{max-height:300px}</style></head><body>
+<div class="topbar"><h1>Protocol Converter</h1><div class="nav"><a href="/query">协议查询</a><a href="/decode" class="active">帧解码</a><a href="/encode">帧编码</a><a href="/parse">批量解析</a></div><div class="spacer"></div><div class="proto-sel"><select id="proto-sel" onchange="switchProto(this.value)"></select></div></div>
+<div class="main">
+  <div class="card"><h2>CAN 帧解码</h2>
+    <div class="row-inline">
+      <label>CAN ID:</label><input id="cid" placeholder="182756F4" style="width:160px" onkeyup="if(event.key==='Enter')decode()">
+      <label>数据域:</label><input id="dhex" placeholder="10 27" style="width:240px" onkeyup="if(event.key==='Enter')decode()">
+      <label><input type="checkbox" id="tpm">TP重组</label>
+      <button class="btn-primary" onclick="decode()">解码</button>
+    </div>
+  </div>
+  <div class="card" id="idbox" style="display:none"><h2>CAN ID 位域</h2><div id="colorbar"></div><div id="iddetail" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
+  <div class="card" id="rbox" style="display:none"><h2>解码结果</h2><div id="rmsg"></div><div class="field-grid" id="rgrid"></div>
+    <div class="collapse-box" id="raw-box" style="display:none"><h3 onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('show')"><span>&#9654;</span>原始数据</h3><div class="collapse-body"><table><thead><tr><th>字段</th><th>原始值(HEX)</th><th>计算过程</th></tr></thead><tbody id="raw-tbody"></tbody></table></div></div>
+  </div>
+</div>
+<script>
+const P={{protocols|tojson}},CID="{{current_id}}";
+(function(){const s=document.getElementById('proto-sel');for(const[k,v]of Object.entries(P)){const o=document.createElement('option');o.value=k;o.text=v;if(k===CID)o.selected=true;s.appendChild(o)}})();
+async function switchProto(id){await fetch('/api/protocol/select',{method:'POST',body:new URLSearchParams({protocol_id:id})});location.reload()}
+const COLORS=['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#34495e'];
+async function decode(){
+  const cid=document.getElementById('cid').value.trim(),dhex=document.getElementById('dhex').value.trim();
+  if(!cid)return;
+  const fd=new FormData();fd.append('can_id',cid);fd.append('data',dhex);fd.append('tp_mode',document.getElementById('tpm').checked);
+  const r=await(await fetch('/api/decode',{method:'POST',body:fd})).json();
+  if(r.error){alert(r.error);return}
+  document.getElementById('idbox').style.display='';
+  // Color bar
+  let bar='',tip='';
+  const segments=r.id_detail;const total=29;let cur=0;
+  segments.forEach((f,i)=>{const start=f.value!==undefined?f.name==='priority'?26:f.name==='edp'?25:f.name==='dp'?24:f.name==='pf'?16:f.name==='ps'?8:f.name==='sa'?0:0:0;const w=((1<<(f.name==='priority'?3:1))-0);const pct=(w/total*100).toFixed(1);
+    bar+='<div class="color-seg" data-tip="'+f.name+'='+f.value+' ('+f.hex+')'+(f.desc?' '+f.desc:'')+'" style="background:'+COLORS[i%COLORS.length]+';width:'+pct+'%">'+f.name.slice(0,2)+'</div>';cur++});
+  document.getElementById('colorbar').innerHTML=bar;
+  document.getElementById('iddetail').innerHTML=segments.map(f=>'<span class="tag tag-blue">'+f.name+'='+f.value+'<small>('+f.hex+')</small>'+(f.desc?' <small>'+f.desc+'</small>':'')+'</span>'
+    +('priority'===f.name&&r.direction?' <span class="tag tag-green" style="font-weight:bold">'+r.direction+'</span>':'')).join('');
+  document.getElementById('rbox').style.display='';
+  document.getElementById('rmsg').innerHTML=r.message==='UNKNOWN'?'<div class="msg-info error">未识别报文</div>':'<div class="msg-info success">'+r.message+' \u2014 '+r.message_name+'</div>';
+  document.getElementById('rgrid').innerHTML=r.fields.map(f=>'<div class="field-item"><div class="fl">'+f.name+'</div><div class="fv mono">'+f.value+(f.unit?'<span style="font-size:11px;color:#888">'+f.unit+'</span>':'')+'</div></div>').join('');
+}
+</script></body></html>
