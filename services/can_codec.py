@@ -226,25 +226,48 @@ class CanCodec:
             seq += 1; offset += n
         return frames
 
-    def tp_reassemble(self, frames: list) -> bytes:
-        """从 TP.DT 帧序列重组完整数据
-        frames: [bytes, ...] — 每帧 8 字节 TP.DT 数据（含序号头）
+    def tp_reassemble(self, frames: list, total_len: int = 0) -> bytes:
+        """从 TP.DT 帧序列重组完整数据，兼容两种格式：
+        A. 标准 J1939 序号型: 首帧 byte0=0x01, 数据从 byte1 起（总长由 total_len 提供）
+        B. 0x10 首帧标记型: 首帧 byte0 高 nibble=0x1, byte1=总长低8位, 数据从 byte2 起
         返回: 重组后的完整数据
         """
         if not frames:
             return b''
         result = bytearray()
-        total_len = 0
-        for i, f in enumerate(frames):
+        first_frame = None
+        first_kind = None
+        others = []
+
+        for f in frames:
             if len(f) < 2:
                 continue
-            if i == 0:
-                # 首帧: byte0 高 nibble=0x1, byte1=总长度低 8 位, byte2-7=前 6 字节
-                total_len = ((f[0] & 0x0F) << 8) | f[1]
-                result.extend(f[2:min(2 + 6, len(f))])
+            if (f[0] & 0xF0) == 0x10:
+                # B 型: 0x10 标记首帧
+                if first_frame is None:
+                    first_frame = f
+                    first_kind = 'marker'
+            elif f[0] == 0x01 and first_frame is None:
+                # A 型: 标准序号 1 首帧
+                first_frame = f
+                first_kind = 'std'
             else:
-                # 后续帧: byte0=序号, byte1-7=7 字节数据
-                result.extend(f[1:min(8, len(f))])
+                others.append((f[0], f))
+
+        if first_frame is None:
+            return b''
+
+        if first_kind == 'marker':
+            if not total_len:
+                total_len = ((first_frame[0] & 0x0F) << 8) | first_frame[1]
+            result.extend(first_frame[2:min(2 + 6, len(first_frame))])
+        else:  # std: 首帧序号1, 数据从 byte1 起
+            result.extend(first_frame[1:min(8, len(first_frame))])
+
+        others.sort(key=lambda x: x[0])
+        for seq, f in others:
+            result.extend(f[1:min(8, len(f))])
+
         if total_len:
             return bytes(result[:total_len])
         return bytes(result)
@@ -284,6 +307,8 @@ class CanCodec:
             raw = int(round((raw - (field.offset or 0)) / field.resolution + 1e-9))
         elif isinstance(raw, float):
             raw = int(round(raw))  # 无分辨率的浮点输入 → 整数
+        if raw < 0:
+            raw = 0  # 负值 clamp 到 0（无符号字节装不下）
         return raw.to_bytes(field.length, "little")
 
     def _pack_int_be(self, field: FieldDef, value: Any) -> bytes:
@@ -292,6 +317,8 @@ class CanCodec:
             raw = int(round((raw - (field.offset or 0)) / field.resolution + 1e-9))
         elif isinstance(raw, float):
             raw = int(round(raw))  # 无分辨率的浮点输入 → 整数
+        if raw < 0:
+            raw = 0  # 负值 clamp 到 0（无符号字节装不下）
         return raw.to_bytes(field.length, "big")
 
     def _pack_bcd(self, field: FieldDef, value: Any) -> bytes:

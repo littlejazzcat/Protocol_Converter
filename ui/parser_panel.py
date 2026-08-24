@@ -130,8 +130,8 @@ class ParserPanel(QWidget):
 
             # 预览
             preview = self.parser.preview(20)
-            self._show_table(preview, preview.columns.tolist())
-            self.summary_label.setText(f"✓ 已加载 {self.parser.row_count} 行，{preview.shape[1]} 列 · {os.path.basename(self._filepath)}")
+            self._show_table(preview, self.parser.columns)
+            self.summary_label.setText(f"✓ 已加载 {self.parser.row_count} 行，{len(self.parser.columns)} 列 · {os.path.basename(self._filepath)}")
 
             self.btn_parse.setEnabled(True)
             self.btn_export.setEnabled(False)
@@ -155,18 +155,14 @@ class ParserPanel(QWidget):
             return
 
         # 显示结果
-        result_df = self.parser.to_dataframe()
-        # 优先列序: 原始列 + CAN ID + 数据域 + 报文 + 解析结果
-        display_cols = []
-        # 原始列（排在最前）
-        for c in result_df.columns:
-            if c not in ("CAN ID", "数据域", "报文", "解析结果", "_index", "_tp"):
-                display_cols.append(c)
-        # 解析列
-        for c in ["CAN ID", "数据域", "CAN ID 解析", "报文", "解析结果"]:
-            if c in result_df.columns:
-                display_cols.append(c)
-        self._show_table(result_df, display_cols)
+        result_rows = self.parser.to_rows()
+        # 原始列在前，解析列在后
+        orig_cols = [c for c in self.parser.columns
+                     if c not in (self.parser._id_col, self.parser._data_col)
+                     and not c.startswith("Unnamed")]
+        parse_cols = ["CAN ID", "数据域", "CAN ID 解析", "报文", "解析结果"]
+        display_cols = orig_cols + parse_cols
+        self._show_table(result_rows, display_cols)
 
         summary = self.parser.get_summary()
         parts = [f"共 {summary['total']} 行", f"匹配 {summary['matched']}"]
@@ -191,19 +187,19 @@ class ParserPanel(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "导出失败", str(e))
 
-    def _show_table(self, df, columns):
-        """用 DataFrame 填充表格"""
+    def _show_table(self, rows, columns):
+        """用行列表填充表格"""
         import math
         self.table.clear()
-        self.table.setRowCount(len(df))
+        self.table.setRowCount(len(rows))
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.table.setHorizontalScrollMode(self.table.ScrollMode.ScrollPerPixel)
 
-        for r in range(len(df)):
+        for r, row in enumerate(rows):
             for c, col in enumerate(columns):
-                val = df.iloc[r].get(col, "")
+                val = row.get(col, "")
                 if isinstance(val, float):
                     if math.isnan(val):
                         val = ""

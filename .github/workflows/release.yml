@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install PySide6 pandas openpyxl pyinstaller
+
+      - name: Build exe
+        run: pyinstaller ProtocolConverter.spec
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Protocol Converter ${{ github.ref_name }}"
+          body: |
+            ### 新特性
+            - 支持 GB/T 27930-2023 / 安世博 / 三统一 / 英飞源 四种协议
+            - CAN ID 位域解析与方向显示
+            - Excel 批量解析 + TP 多帧重组
+            - 单帧编解码面板
+
+            ### 使用方式
+            下载 `ProtocolConverter.exe` 直接运行。
+          files: dist/ProtocolConverter.exe
