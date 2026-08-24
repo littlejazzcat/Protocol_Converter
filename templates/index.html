@@ -40,13 +40,13 @@ input,select,textarea,button{font-family:inherit;font-size:12.5px}input,select{b
 #encode-tbl{max-height:350px;overflow:auto}
 </style></head><body>
 <div class="topbar">
-  <span class="logo">&#9889; Protocol Converter</span><span class="ver">v1.2</span>
+  <span class="logo">&#9889; Protocol Converter</span><span class="ver" id="ver-label">{{ version }}</span>
   <div class="tabs">
     <button class="active" data-panel="query">&#128269; 协议查询</button>
     <button data-panel="decode">&#128273; 帧解码</button>
     <button data-panel="parse">&#128196; 批量解析</button>
   </div>
-  <div class="proto-wrap"><select id="proto-sel"></select></div>
+  <div class="proto-wrap"><button id="btn-update" title="检查更新" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:13px" onclick="checkUpdate()">&#128260; 检查更新</button><select id="proto-sel"></select></div>
 </div>
 <div class="main">
 <div class="panel active" id="panel-query"><div class="query-layout">
@@ -83,6 +83,14 @@ input,select,textarea,button{font-family:inherit;font-size:12.5px}input,select{b
   <div class="card" id="pres-box" style="display:none"><h2>解析结果 <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="window.open('/api/parse/export')">导出Excel</button></h2><div id="pres-sum"></div><div class="scroll-y" style="max-height:420px"><table><thead id="pres-head"></thead><tbody id="pres-body"></tbody></table></div><div class="pagination" id="pres-pag"></div></div>
 </div>
 </div>
+<!-- 更新进度浮层 -->
+<div id="update-mask" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:10px;padding:20px 28px;min-width:340px;text-align:center">
+    <div style="font-weight:600;margin-bottom:12px">下载更新包</div>
+    <div class="progress"><div class="fill" id="upd-fill" style="width:0"></div></div>
+    <div id="upd-pct" style="font-size:12px;color:var(--muted);margin-top:6px">0%</div>
+  </div>
+</div>
 <script>
 const PROTOCOLS={{protocols|tojson}},CUR="{{current_id}}";
 let page='query',curEnc=null,parsedData=null,PG=100;
@@ -100,6 +108,34 @@ function switchTab(t){
   if(t==='query'&&!document.getElementById('tree').children.length)loadTree();
 }
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.panel));
+
+// ══════ 自更新 ══════
+async function checkUpdate(){
+  const r=await(await fetch('/api/check-update')).json();
+  if(r.error){alert(r.error);return}
+  if(!r.available){alert('已是最新版本 '+r.current);return}
+  const info='发现新版本: '+r.latest+'（当前 '+r.current+'）\n\n'+(r.changelog?r.changelog.slice(0,300):'');
+  if(!confirm(info+'\n\n是否下载更新包？'))return;
+  document.getElementById('update-mask').style.display='flex';
+  document.getElementById('upd-fill').style.width='0';
+  document.getElementById('upd-pct').textContent='0%';
+  const dl=await fetch('/api/do-update',{method:'POST'});
+  const dr=await dl.json();
+  const mask=document.getElementById('update-mask');
+  mask.style.display='none';
+  if(!dr.ok){alert('下载失败: '+(dr.error||'未知错误'));return}
+  alert('新版本 '+r.latest+' 已下载到:\n'+dr.path+'\n\n请关闭程序，解压该压缩包覆盖到当前目录后重新启动。');
+}
+// 下载进度轮询
+setInterval(async()=>{
+  const mask=document.getElementById('update-mask');
+  if(mask.style.display!=='flex')return;
+  try{
+    const s=await(await fetch('/api/download-progress')).json();
+    document.getElementById('upd-fill').style.width=s.progress+'%';
+    document.getElementById('upd-pct').textContent=s.progress+'%'+(s.total?' ('+Math.round(s.downloaded/1048576)+'/'+Math.round(s.total/1048576)+' MB)':'');
+  }catch(e){}
+},300);
 
 async function loadTree(){
   const r=await fetch('/api/messages/tree'),stages=await r.json(),el=document.getElementById('tree');el.innerHTML='';
