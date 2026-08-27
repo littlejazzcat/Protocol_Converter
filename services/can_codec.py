@@ -185,15 +185,15 @@ class CanCodec:
         }
 
     def tp_split(self, msg: MessageDef, data: bytes, base_can_id: int) -> list:
-        """将长报文按 27930/J1939 TP 分包
+        """将长报文按 J1939 TP 分包（标准序号型，对齐实测报文格式）
         返回: [{"frame": N, "can_id": int, "can_id_hex": str, "data": bytes, "data_hex": str, "type": str}, ...]
         """
         frames = []
         total_len = len(data)
-        total_packets = (total_len + 6) // 7
+        total_packets = (total_len + 6) // 7  # 每帧 7 字节数据，向上取整
         pgn = msg.pgn or 0
 
-        # TP.CM_RTS — PGN 0xEC00
+        # TP.CM_RTS — 发送方(车辆)→接收方(充电机)
         rts_id = (base_can_id & 0xFF00FFFF) | (0xEC << 16)
         rts = bytearray(8)
         rts[0] = 0x10
@@ -204,25 +204,29 @@ class CanCodec:
         rts[5] = pgn & 0xFF; rts[6] = (pgn >> 8) & 0xFF; rts[7] = (pgn >> 16) & 0xFF
         frames.append({"frame": 0, "can_id": rts_id, "can_id_hex": f"0x{rts_id:08X}", "data": bytes(rts), "data_hex": rts.hex(" ").upper(), "type": "TP.CM_RTS"})
 
-        # TP.CM_CTS
+        # TP.CM_CTS — 接收方(充电机)→发送方(车辆)，SA/PS 互换
+        sa = base_can_id & 0xFF
+        ps = (base_can_id >> 8) & 0xFF
+        cts_id = (base_can_id & 0xFFFF0000) | (sa << 8) | (ps & 0xFF)
+        cts_id = (cts_id & 0xFF00FFFF) | (0xEC << 16)
         cts = bytearray(8)
-        cts[0] = 0x11; cts[1] = total_packets & 0xFF; cts[2] = 1; cts[3] = 0xFF; cts[4] = 0xFF
+        cts[0] = 0x11
+        cts[1] = total_packets & 0xFF
+        cts[2] = 1
+        cts[3] = 0xFF; cts[4] = 0xFF
         cts[5] = pgn & 0xFF; cts[6] = (pgn >> 8) & 0xFF; cts[7] = (pgn >> 16) & 0xFF
-        frames.append({"frame": 0, "can_id": rts_id, "can_id_hex": f"0x{rts_id:08X}", "data": bytes(cts), "data_hex": cts.hex(" ").upper(), "type": "TP.CM_CTS"})
+        frames.append({"frame": 0, "can_id": cts_id, "can_id_hex": f"0x{cts_id:08X}", "data": bytes(cts), "data_hex": cts.hex(" ").upper(), "type": "TP.CM_CTS"})
 
-        # TP.DT — PGN 0xEB00
+        # TP.DT — 标准序号型: 首帧 byte0=0x01, 数据从 byte1 起每帧 7 字节, 末帧 0xFF 填充
         dt_id = (base_can_id & 0xFF00FFFF) | (0xEB << 16)
         seq, offset = 1, 0
-        first = bytearray(8)
-        first[0] = 0x10 | ((total_len >> 8) & 0x0F)
-        first[1] = total_len & 0xFF
-        n = min(6, total_len); first[2:2 + n] = data[0:n]
-        frames.append({"frame": seq, "can_id": dt_id, "can_id_hex": f"0x{dt_id:08X}", "data": bytes(first), "data_hex": first.hex(" ").upper(), "type": "TP.DT 首帧"})
-        seq += 1; offset += n
         while offset < total_len:
-            dt = bytearray(8); dt[0] = seq
-            n = min(7, total_len - offset); dt[1:1 + n] = data[offset:offset + n]
-            frames.append({"frame": seq, "can_id": dt_id, "can_id_hex": f"0x{dt_id:08X}", "data": bytes(dt), "data_hex": dt.hex(" ").upper(), "type": "TP.DT"})
+            dt = bytearray([0xFF] * 8)
+            dt[0] = seq
+            n = min(7, total_len - offset)
+            dt[1:1 + n] = data[offset:offset + n]
+            ttype = "TP.DT 首帧" if seq == 1 else "TP.DT"
+            frames.append({"frame": seq, "can_id": dt_id, "can_id_hex": f"0x{dt_id:08X}", "data": bytes(dt), "data_hex": dt.hex(" ").upper(), "type": ttype})
             seq += 1; offset += n
         return frames
 

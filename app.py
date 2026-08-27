@@ -18,15 +18,18 @@ from services.excel_parser import ExcelParser
 # ── 初始化 ──────────────────────────────────────
 
 VERSION = "v1.2.0"
-# 更新源仓库（待建，格式: "用户名/仓库名"）
-REPO = ""
+# 更新源（GitHub 与 Gitee 仓库名不同，各自配置）
 SOURCES = [
-    {"name": "GitHub", "api": "https://api.github.com/repos/{repo}/releases/latest"},
-    {"name": "Gitee", "api": "https://gitee.com/api/v5/repos/{repo}/releases/latest"},
+    {"name": "GitHub", "repo": "littlejazzcat/Protocol_Converter",
+     "api": "https://api.github.com/repos/{repo}/releases/latest"},
+    {"name": "Gitee", "repo": "littlejazzcat/protocol_converter",
+     "api": "https://gitee.com/api/v5/repos/{repo}/releases/latest"},
 ]
 
-_update_info = {"available": False, "latest": "", "changelog": "", "download_url": "", "error": ""}
-_download_state = {"active": False, "progress": 0, "downloaded": 0, "total": 0, "path": "", "error": ""}
+_update_info = {"available": False, "latest": "", "changelog": "",
+                "download_url": "", "error": ""}
+_download_state = {"active": False, "progress": 0, "downloaded": 0,
+                   "total": 0, "path": "", "error": ""}
 
 BASE_DIR = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -105,7 +108,7 @@ async def parse_page(request: Request):
     return render("index.html", protocols=ALL_PROTOS, current_id=CUR(), version=VERSION)
 
 
-# ── API ──────────────────────────────────────────
+# ── 协议 API ────────────────────────────────────
 
 @app.post("/api/protocol/select")
 async def api_select_protocol(protocol_id: str = Form(...)):
@@ -132,10 +135,12 @@ async def api_messages_tree():
             msg = proto.get_message_by_abbr(abbr)
             if msg:
                 stage_msgs.append({"abbr": msg.abbr, "name": msg.name,
-                                    "pf": msg.identifier.get("pf")})
+                                   "pf": msg.identifier.get("pf")})
         result.append({"name": group["name"], "messages": stage_msgs})
     return result
 
+
+# ── 编解码 API ──────────────────────────────────
 
 @app.post("/api/decode")
 async def api_decode(can_id: str = Form(...), data: str = Form(...),
@@ -177,7 +182,8 @@ async def api_decode(can_id: str = Form(...), data: str = Form(...),
         if isinstance(val, dict):
             val = val.get("label", str(val))
         unit = f.unit or ""
-        fields.append({"name": f.name, "value": str(val) if val is not None else "", "unit": unit})
+        fields.append({"name": f.name, "value": str(val) if val is not None else "",
+                       "unit": unit})
 
     return {"can_id": f"0x{id_val:08X}", "id_detail": id_detail,
             "direction": direction, "message": msg.abbr, "message_name": msg.name,
@@ -233,19 +239,25 @@ async def api_encode_build(msg_abbr: str = Form(...), field_values: str = Form("
                           for f in tp_frames]}
 
 
+# ── 批量解析 API ────────────────────────────────
+
 @app.get("/api/parse/path")
-async def api_parse_path(path: str = ""):
+def api_parse_path(path: str = ""):
     parser = state["parser"]
     path = path.strip().strip('"').strip("'")
     try:
         parser.load(path)
     except Exception as e1:
         try:
-            import shutil, subprocess
-            fd, dst = tempfile.mkstemp(suffix=".xlsx", dir=os.path.dirname(os.path.abspath(path)))
+            import subprocess
+            fd, dst = tempfile.mkstemp(
+                suffix=".xlsx",
+                dir=os.path.dirname(os.path.abspath(path))
+            )
             os.close(fd)
-            os.unlink(dst)  # 先删掉空文件，copy 命令会创建新的
-            r = subprocess.run(["cmd", "/c", "copy", "/y", path, dst], capture_output=True, text=True, timeout=30)
+            os.unlink(dst)
+            r = subprocess.run(["cmd", "/c", "copy", "/y", path, dst],
+                               capture_output=True, text=True, timeout=30)
             if r.returncode != 0:
                 raise IOError(f"copy 失败: {r.stderr}")
             parser.load(dst)
@@ -284,7 +296,7 @@ async def api_parse_upload(file: UploadFile = File(...)):
 
 
 @app.post("/api/parse/run")
-async def api_parse_run():
+def api_parse_run():
     parser = state["parser"]
     try:
         results = parser.parse()
@@ -296,7 +308,7 @@ async def api_parse_run():
 
 
 @app.get("/api/parse/export")
-async def api_parse_export():
+def api_parse_export():
     parser = state["parser"]
     fd, path = tempfile.mkstemp(suffix=".xlsx")
     os.close(fd)
@@ -305,12 +317,10 @@ async def api_parse_export():
                         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
-# ── 自更新 ─────────────────────────────────────────
+# ── 自更新 API ──────────────────────────────────
 
 def _check_update_sync(source_name: str = "") -> dict:
     """同步检测最新版本（GitHub → Gitee 双源容错）"""
-    if not REPO:
-        return {"available": False, "error": "未配置仓库地址"}
     import httpx
     from packaging.version import Version
 
@@ -320,7 +330,7 @@ def _check_update_sync(source_name: str = "") -> dict:
         if src["name"] not in names:
             continue
         try:
-            r = httpx.get(src["api"].format(repo=REPO), timeout=10)
+            r = httpx.get(src["api"].format(repo=src["repo"]), timeout=10)
             if r.status_code != 200:
                 last_err = f"{src['name']} HTTP {r.status_code}"
                 continue
@@ -329,7 +339,6 @@ def _check_update_sync(source_name: str = "") -> dict:
             if not latest_tag:
                 last_err = f"{src['name']} 无 tag"
                 continue
-            # 挑 zip 资产
             asset_url = ""
             for a in data.get("assets", []) or []:
                 name = a.get("name", "")
@@ -337,7 +346,7 @@ def _check_update_sync(source_name: str = "") -> dict:
                     asset_url = a.get("browser_download_url", "")
                     break
             try:
-                available = Version(latest_tag.lstrip("v")) > Version(VERSION.lstrip("v"))
+                available = Version(latest_tag.lstrip("vV")) > Version(VERSION.lstrip("vV"))
             except Exception:
                 available = latest_tag != VERSION
             return {
@@ -368,7 +377,7 @@ async def api_download_progress():
 
 
 @app.post("/api/do-update")
-async def api_do_update():
+def api_do_update():
     if _download_state["active"]:
         return {"ok": False, "error": "已有下载任务进行中"}
     if not _update_info.get("download_url"):
