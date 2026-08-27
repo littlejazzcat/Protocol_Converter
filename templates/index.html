@@ -46,7 +46,7 @@ input,select,textarea,button{font-family:inherit;font-size:12.5px}input,select{b
     <button data-panel="decode">&#128273; 帧解码</button>
     <button data-panel="parse">&#128196; 批量解析</button>
   </div>
-  <div class="proto-wrap"><button id="btn-update" title="检查更新" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:13px" onclick="checkUpdate()">&#128260; 检查更新</button><select id="proto-sel"></select></div>
+  <div class="proto-wrap"><button style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:12px" onclick="checkUpdate('GitHub')" title="从 GitHub 检查更新">&#128260; GitHub</button><button style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:12px" onclick="checkUpdate('Gitee')" title="从 Gitee 检查更新">&#128260; Gitee</button><select id="proto-sel"></select></div>
 </div>
 <div class="main">
 <div class="panel active" id="panel-query"><div class="query-layout">
@@ -110,8 +110,8 @@ function switchTab(t){
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.panel));
 
 // ══════ 自更新 ══════
-async function checkUpdate(){
-  const r=await(await fetch('/api/check-update')).json();
+async function checkUpdate(source){
+  const r=await(await fetch('/api/check-update?source='+encodeURIComponent(source))).json();
   if(r.error){alert(r.error);return}
   if(!r.available){alert('已是最新版本 '+r.current);return}
   const info='发现新版本: '+r.latest+'（当前 '+r.current+'）\n\n'+(r.changelog?r.changelog.slice(0,300):'');
