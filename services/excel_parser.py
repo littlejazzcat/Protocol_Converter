@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from services.query_engine import QueryEngine
 from services.can_codec import CanCodec
-from models.protocol import MessageDef
+from models.protocol import MessageDef, resolve_address_name
 
 
 class ExcelParser:
@@ -26,6 +26,7 @@ class ExcelParser:
         self._results: List[Dict] = []
         self.enable_tp = True
         self._cur_tp_key = None  # 当前活动 TP 组 key
+        self._sg_active: Dict[int, tuple] = {}  # 三统一多帧: can_id -> 活动组 key
 
     # ── 加载 ──────────────────────────────────────
 
@@ -241,6 +242,7 @@ class ExcelParser:
         self._results = []
         total = len(self._rows)
         tp_groups: Dict[tuple, dict] = {}
+        sg_groups: Dict[tuple, dict] = {}
         keep_cols = [c for c in self._columns
                      if c not in (self._id_col, self._data_col)
                      and not str(c).startswith("Unnamed")]
@@ -285,6 +287,23 @@ class ExcelParser:
                             seq = data[0]
                             tp_groups[k]["dt_frames"].append((seq, data))
                     continue
+
+                # 三统一自定义多帧 (MD 2.5): 首帧开新组, 后续序号帧追加
+                if self.codec.sg_first_frame(pf, data):
+                    key = (can_id, i)
+                    sg_groups[key] = {"can_id": can_id, "frames": {1: data},
+                                      "k": data[1], "start_idx": i,
+                                      "keep_cols": {c: row.get(c, "") for c in keep_cols}}
+                    self._sg_active[can_id] = key
+                    continue
+                _ak = self._sg_active.get(can_id)
+                if _ak is not None and _ak in sg_groups:
+                    g = sg_groups[_ak]
+                    if 2 <= data[0] <= g["k"]:
+                        g["frames"][data[0]] = data
+                        if len(g["frames"]) >= g["k"]:
+                            del self._sg_active[can_id]
+                        continue
 
                 msg = self.query.by_can_id(can_id, data)
                 if msg is None:
@@ -348,6 +367,36 @@ class ExcelParser:
                 result["解析结果"] = self._format_decoded(target_msg, assembled)
                 self._results.append(result)
 
+        # 三统一自定义多帧重组
+        for key, g in sg_groups.items():
+            k = g["k"]
+            if len(g["frames"]) != k:
+                continue  # 缺帧, 放弃
+            frames = [g["frames"][s] for s in range(1, k + 1)]
+            assembled = self.codec.sg_reassemble(frames)
+            if not assembled:
+                continue
+            ok = self.codec.sg_verify(frames, assembled)
+            can_id = g["can_id"]
+            msg = self.query.by_can_id(can_id, assembled)
+            result = {"_index": g["start_idx"], "_sg": True}
+            result.update(g["keep_cols"])
+            result["CAN ID"] = f"0x{can_id:08X}"
+            id_fields = self.query.parse_can_id(can_id)
+            id_parts = [f"{sf.name}={id_fields.get(sf.name)}"
+                        for sf in self.query.protocol.can_id_schema.fields
+                        if id_fields.get(sf.name) is not None]
+            result["CAN ID 解析"] = "; ".join(id_parts)
+            result["数据域"] = assembled.hex(" ").upper()
+            tag = "[多帧]" if ok else "[多帧·校验失败]"
+            if msg is None:
+                result["报文"] = f"UNKNOWN {tag}"
+                result["解析结果"] = f"重组 {k} 帧 / {len(assembled)} 字节"
+            else:
+                result["报文"] = f"{msg.abbr} {tag}"
+                result["解析结果"] = self._format_decoded(msg, assembled)
+            self._results.append(result)
+
         self._results.sort(key=lambda r: r["_index"])
         return self._results
 
@@ -405,12 +454,8 @@ class ExcelParser:
             return "模块→监控" if dst in range(0xF0, 0xF9) else "监控→模块"
         sa = id_fields.get("sa", 0)
         ps = id_fields.get("ps", 0)
-        sa_name = ps_name = ""
-        for k, v in addrs.items():
-            if v.get("value") == sa:
-                sa_name = v.get("name", k)
-            if v.get("value") == ps:
-                ps_name = v.get("name", k)
+        sa_name = resolve_address_name(addrs, sa)
+        ps_name = resolve_address_name(addrs, ps)
         return f"{sa_name}→{ps_name}" if sa_name and ps_name else ""
 
     def _parse_can_id(self, value) -> int:

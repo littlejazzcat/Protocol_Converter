@@ -3,9 +3,10 @@
     "protocol_name": "国网三统一模块通讯协议",
     "protocol_id": "sg_unified_v107",
     "version": "V107",
-    "standard": "国家电网三统一模块通讯协议",
+    "standard": "电动汽车非车载传导式充电机功率控制模块与充电模块通信协议",
     "baud_rate": 125000,
-    "frame_format": "CAN_2.0B_EXTENDED"
+    "frame_format": "CAN_2.0B_EXTENDED",
+    "roles": {"power_control": "功率控制模块", "charge_module": "充电模块"}
   },
   "can_id_schema": {
     "total_bits": 29,
@@ -21,12 +22,30 @@
     "identifier_field": "pf"
   },
   "addresses": {
-    "MNU": {"value": 0, "hex": "0x00", "name": "监控单元", "description": "地址可配置"},
-    "MODULE_BROADCAST": {"value": 255, "hex": "0xFF", "name": "模块广播地址"}
+    "POWER_CONTROL": {"value": 160, "hex": "0xA0", "name": "功率控制模块", "range": "0xA0~0xAE", "description": "默认地址，可配置"},
+    "POWER_CONTROL_BROADCAST": {"value": 175, "hex": "0xAF", "name": "功率控制模块广播"},
+    "CHARGE_MODULE": {"value": 32, "hex": "0x20", "name": "充电模块", "range": "0x20~0x9E", "description": "地址可配置"},
+    "MODULE_BROADCAST": {"value": 159, "hex": "0x9F", "name": "充电模块广播"}
   },
+  "fixed_group_map": [
+    {"range": "0x80~0x87", "group": 1},
+    {"range": "0x88~0x8F", "group": 2},
+    {"range": "0x90~0x97", "group": 3},
+    {"range": "0x98~0x9E", "group": 4},
+    {"range": "0x60~0x67", "group": 5},
+    {"range": "0x68~0x6F", "group": 6},
+    {"range": "0x70~0x77", "group": 7},
+    {"range": "0x78~0x7F", "group": 8}
+  ],
   "encoding_rules": {
     "default_byte_order": "little_endian",
     "undefined_bit_fill": 1
+  },
+  "transport": {
+    "type": "sg_sequence",
+    "applies_to_pf": [128, 129, 130, 131, 142, 143],
+    "max_frames": 32,
+    "description": "数据域超 8 字节时按自定义序号分帧: 首帧 byte0=序号(1), byte1=总帧数, byte2-3=有效数据长度(LE), byte4-7=数据01-04; 后续帧 byte0=序号, byte1-7=数据; 末帧在数据后为 2 字节累加和校验, 余位填 0。PF 沿用报文自身 PF, 不使用 J1939 TP (0xEB/0xEC)"
   },
   "message_matcher": {
     "type": "pf_based",
@@ -37,16 +56,18 @@
     {"name": "动态分组", "messages": ["GROUP_SET", "GROUP_RESP", "RC_CMD_DYN", "RC_RESP_DYN"]},
     {"name": "遥信遥测", "messages": ["TELEMETRY"]},
     {"name": "心跳", "messages": ["HEARTBEAT_TX", "HEARTBEAT_RX"]},
-    {"name": "定值", "messages": ["PARAM_SET", "PARAM_RESP", "PARAM_QUERY", "PARAM_QUERY_RESP"]}
+    {"name": "定值", "messages": ["PARAM_SET", "PARAM_RESP", "PARAM_QUERY", "PARAM_QUERY_RESP"]},
+    {"name": "程序在线更新", "messages": ["UPG_HEARTBEAT", "UPG_HEARTBEAT_RESP", "UPG_START_DOWNLOAD", "UPG_START_DOWNLOAD_RESP", "UPG_REQ_RANGE", "UPG_REQ_RANGE_RESP1", "UPG_REQ_RANGE_RESP2", "UPG_START_PACK", "UPG_START_PACK_RESP", "UPG_SEND_DATA", "UPG_FINISH_PACK", "UPG_FINISH_PACK_RESP", "UPG_VERIFY", "UPG_VERIFY_RESP", "UPG_RESET", "UPG_RESET_RESP"]},
+    {"name": "调试信息", "messages": ["DEBUG_DOWN", "DEBUG_UP"]}
   ],
   "messages": [
     {
       "name": "遥控命令（固定分组）",
       "abbr": "RC_CMD_FIXED",
       "identifier": {"pf": 1},
-      "can_id_template": {"priority": 6, "pf": 1, "ps": 255, "sa": 0},
-      "direction": "MNU→模块",
-      "cycle_ms": 0,
+      "can_id_template": {"priority": 6, "pf": 1, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 250,
       "data_length": 8,
       "stage": "固定分组遥控",
       "fields": [
@@ -54,7 +75,7 @@
         {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段(200-500V)", "1": "高压段(500-950V)"}, "required": true},
         {"name": "功分接触器", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
         {"name": "主接触器", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
-        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "description": "目的地址为充电模块广播地址时生效，bit0~bit7 对应第1~8组选择", "required": false},
         {"name": "给定电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true},
         {"name": "给定电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "range": [0, 600], "required": true},
         {"name": "电池电压", "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true}
@@ -64,8 +85,8 @@
       "name": "遥控命令应答（固定分组）",
       "abbr": "RC_RESP_FIXED",
       "identifier": {"pf": 2},
-      "can_id_template": {"priority": 6, "pf": 2, "ps": 0, "sa": 255},
-      "direction": "模块→MNU",
+      "can_id_template": {"priority": 6, "pf": 2, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
       "cycle_ms": 0,
       "data_length": 8,
       "stage": "固定分组遥控",
@@ -82,11 +103,11 @@
       ]
     },
     {
-      "name": "分组设置帧",
+      "name": "分组设置命令帧（动态分组）",
       "abbr": "GROUP_SET",
       "identifier": {"pf": 3},
-      "can_id_template": {"priority": 6, "pf": 3, "ps": 255, "sa": 0},
-      "direction": "MNU→模块",
+      "can_id_template": {"priority": 6, "pf": 3, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
       "cycle_ms": 0,
       "data_length": 8,
       "stage": "动态分组",
@@ -100,37 +121,37 @@
       ]
     },
     {
-      "name": "分组设置应答帧",
+      "name": "分组设置应答帧（动态分组）",
       "abbr": "GROUP_RESP",
       "identifier": {"pf": 4},
-      "can_id_template": {"priority": 6, "pf": 4, "ps": 0, "sa": 255},
-      "direction": "模块→MNU",
+      "can_id_template": {"priority": 6, "pf": 4, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
       "cycle_ms": 0,
       "data_length": 8,
       "stage": "动态分组",
       "fields": [
         {"name": "成功标识", "byte_start": 1, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "失败", "1": "成功"}, "required": true},
-        {"name": "操作类型", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 2, "data_type": "bits", "enum": {"1": "设置", "2": "撤销"}, "required": true},
-        {"name": "地址类型", "byte_start": 1, "length": 1, "bit_start": 3, "bit_len": 2, "data_type": "bits", "enum": {"1": "连续", "2": "间断"}, "required": true},
-        {"name": "失败原因", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"0": "成功", "1": "使用中,设置/撤销失败", "2": "固定分组模式下,设置/撤销失败"}, "required": false}
+        {"name": "操作类型", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 2, "data_type": "bits", "enum": {"1": "分组设置", "2": "分组撤销"}, "required": true},
+        {"name": "地址类型", "byte_start": 1, "length": 1, "bit_start": 3, "bit_len": 2, "data_type": "bits", "enum": {"1": "连续地址", "2": "间断地址"}, "required": true},
+        {"name": "失败原因", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"0": "成功", "1": "使用中,分组设置/撤销失败", "2": "固定分组模式下,分组设置/撤销失败"}, "required": false}
       ]
     },
     {
       "name": "遥控命令（动态分组）",
       "abbr": "RC_CMD_DYN",
       "identifier": {"pf": 5},
-      "can_id_template": {"priority": 6, "pf": 5, "ps": 255, "sa": 0},
-      "direction": "MNU→模块",
-      "cycle_ms": 0,
+      "can_id_template": {"priority": 6, "pf": 5, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 250,
       "data_length": 8,
       "stage": "动态分组",
-      "description": "同固定分组格式，操作指令增加0x06=停止充电(自动清除分组信息)",
+      "description": "同固定分组格式，操作指令 0x02=停止充电(保留分组信息)，增加 0x06=停止充电(自动清除分组信息)",
       "fields": [
-        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电", "3": "软启动开机", "4": "显示地址", "5": "参数修改", "6": "停止充电(清分组)"}, "required": true},
-        {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段", "1": "高压段"}, "required": true},
+        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电(保留分组信息)", "3": "软启动开机", "4": "显示地址", "5": "参数修改", "6": "停止充电(自动清除分组信息)"}, "required": true},
+        {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段(200-500V)", "1": "高压段(500-950V)"}, "required": true},
         {"name": "功分接触器", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
         {"name": "主接触器", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
-        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "分组编码", "byte_start": 2, "length": 1, "data_type": "int_le", "description": "动态分组下含义为组号，范围 1~255", "required": false},
         {"name": "给定电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true},
         {"name": "给定电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "range": [0, 600], "required": true},
         {"name": "电池电压", "byte_start": 7, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true}
@@ -140,14 +161,14 @@
       "name": "遥控命令应答（动态分组）",
       "abbr": "RC_RESP_DYN",
       "identifier": {"pf": 6},
-      "can_id_template": {"priority": 6, "pf": 6, "ps": 0, "sa": 255},
-      "direction": "模块→MNU",
+      "can_id_template": {"priority": 6, "pf": 6, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
       "cycle_ms": 0,
       "data_length": 8,
       "stage": "动态分组",
-      "description": "同固定分组应答，操作指令增加0x06",
+      "description": "同固定分组应答，操作指令增加 0x06",
       "fields": [
-        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电", "3": "软启动开机", "4": "显示地址", "5": "参数修改", "6": "停止充电(清分组)"}, "required": true},
+        {"name": "操作指令", "byte_start": 1, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"1": "快速开机", "2": "停止充电", "3": "软启动开机", "4": "显示地址", "5": "参数修改", "6": "停止充电(自动清除分组信息)"}, "required": true},
         {"name": "输出电压范围", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "低压段", "1": "高压段"}, "required": true},
         {"name": "功分接触器", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
         {"name": "主接触器", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "分断", "1": "闭合"}, "required": true},
@@ -159,21 +180,22 @@
       ]
     },
     {
-      "name": "遥信遥测数据",
+      "name": "遥信遥测数据帧",
       "abbr": "TELEMETRY",
       "identifier": {"pf": 32},
-      "can_id_template": {"priority": 6, "pf": 32, "ps": 0, "sa": 255},
-      "direction": "模块→MNU",
-      "cycle_ms": 0,
+      "can_id_template": {"priority": 6, "pf": 32, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 1000,
       "data_length": 8,
       "stage": "遥信遥测",
+      "description": "PGN=8192(0x002000)，充电模块上电后周期性发送",
       "fields": [
-        {"name": "保留/工作状态", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"1": "待机", "2": "工作状态"}, "required": true},
+        {"name": "工作状态", "byte_start": 1, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"1": "待机状态", "2": "工作状态"}, "required": true},
         {"name": "告警状态", "byte_start": 1, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "告警"}, "required": true},
         {"name": "故障状态", "byte_start": 1, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
         {"name": "分组模式", "byte_start": 1, "length": 1, "bit_start": 3, "bit_len": 1, "data_type": "bits", "enum": {"0": "固定分组", "1": "动态分组"}, "required": true},
         {"name": "交流输入故障", "byte_start": 2, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
-        {"name": "直流输出过压", "byte_start": 2, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
+        {"name": "直流输出过压故障", "byte_start": 2, "length": 1, "bit_start": 6, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
         {"name": "直流输出欠压", "byte_start": 2, "length": 1, "bit_start": 5, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
         {"name": "过温", "byte_start": 2, "length": 1, "bit_start": 4, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
         {"name": "直流输出短路", "byte_start": 2, "length": 1, "bit_start": 3, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
@@ -182,101 +204,459 @@
         {"name": "其他故障", "byte_start": 2, "length": 1, "bit_start": 0, "bit_len": 1, "data_type": "bits", "enum": {"0": "正常", "1": "故障"}, "required": true},
         {"name": "直流输出电压", "byte_start": 3, "length": 2, "data_type": "int_le", "resolution": 0.1, "unit": "V", "range": [0, 1000], "required": true},
         {"name": "直流输出电流", "byte_start": 5, "length": 2, "data_type": "int_le", "resolution": 0.01, "unit": "A", "range": [0, 600], "required": true},
-        {"name": "当前组号", "byte_start": 7, "length": 1, "data_type": "int_le", "required": false}
+        {"name": "当前组号", "byte_start": 7, "length": 1, "data_type": "int_le", "range": [0, 255], "description": "0 表示尚未分组", "required": false}
       ]
     },
     {
-      "name": "心跳帧（发送）",
+      "name": "心跳帧（功率控制模块→充电模块）",
       "abbr": "HEARTBEAT_TX",
       "identifier": {"pf": 64},
-      "can_id_template": {"priority": 6, "pf": 64, "ps": 255, "sa": 0},
-      "direction": "MNU→模块",
-      "cycle_ms": 0,
-      "data_length": 0,
+      "can_id_template": {"priority": 6, "pf": 64, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 2000,
+      "data_length": 8,
       "stage": "心跳",
-      "fields": []
+      "fields": [
+        {"name": "预留", "byte_start": 1, "length": 8, "data_type": "int_le", "required": false}
+      ]
     },
     {
-      "name": "心跳帧（接收）",
+      "name": "心跳帧（充电模块→功率控制模块）",
       "abbr": "HEARTBEAT_RX",
       "identifier": {"pf": 65},
-      "can_id_template": {"priority": 6, "pf": 65, "ps": 0, "sa": 255},
-      "direction": "模块→MNU",
-      "cycle_ms": 0,
-      "data_length": 0,
+      "can_id_template": {"priority": 6, "pf": 65, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 2000,
+      "data_length": 8,
       "stage": "心跳",
-      "fields": []
+      "description": "充电模块收到功率控制模块心跳后可停止发送",
+      "fields": [
+        {"name": "预留", "byte_start": 1, "length": 8, "data_type": "int_le", "required": false}
+      ]
     },
     {
-      "name": "定值设置帧",
+      "name": "定值设置命令帧",
       "abbr": "PARAM_SET",
       "identifier": {"pf": 128},
-      "can_id_template": {"priority": 6, "pf": 128, "ps": 255, "sa": 0},
-      "direction": "MNU→模块",
+      "can_id_template": {"priority": 6, "pf": 128, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
       "cycle_ms": 0,
       "data_length": 8,
+      "tp": true,
       "stage": "定值",
-      "description": "设置模块定值参数",
+      "description": "设置模块定值参数，按传输协议传输",
       "fields": [
-        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
         {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
-        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
-        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "range": [1, 200], "required": true},
-        {"name": "预留", "byte_start": 5, "length": 1, "data_type": "int_le", "required": false},
-        {"name": "定值信息", "byte_start": 6, "length": 3, "data_type": "int_le", "description": "48项定值参数,详见国网原始规范文档", "required": true}
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 2, "data_type": "int_le", "range": [1, 200], "required": true},
+        {"name": "预留", "byte_start": 6, "length": 1, "data_type": "int_le", "required": false},
+        {"name": "定值信息", "byte_start": 7, "length": 1, "data_type": "int_le", "variable": true, "description": "长度可变，取决于定值序号，参见附录A定值表", "required": true}
       ]
     },
     {
       "name": "定值设置应答帧",
       "abbr": "PARAM_RESP",
       "identifier": {"pf": 129},
-      "can_id_template": {"priority": 6, "pf": 129, "ps": 0, "sa": 255},
-      "direction": "模块→MNU",
+      "can_id_template": {"priority": 6, "pf": 129, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
       "cycle_ms": 0,
       "data_length": 8,
+      "tp": true,
       "stage": "定值",
       "fields": [
-        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
         {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
-        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
-        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "required": true},
-        {"name": "定值信息", "byte_start": 5, "length": 3, "data_type": "int_le", "required": false}
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 2, "data_type": "int_le", "range": [1, 200], "required": true},
+        {"name": "成功标识", "byte_start": 6, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "失败", "1": "成功"}, "required": true},
+        {"name": "失败原因", "byte_start": 6, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"0": "成功", "1": "无该定值", "2": "禁止写入", "3": "写入失败", "4": "给定越限"}, "required": true},
+        {"name": "定值信息", "byte_start": 7, "length": 1, "data_type": "int_le", "variable": true, "description": "长度可变，取决于定值序号，参见附录A定值表", "required": false}
       ]
     },
     {
-      "name": "定值查询帧",
+      "name": "定值查询命令帧",
       "abbr": "PARAM_QUERY",
       "identifier": {"pf": 130},
-      "can_id_template": {"priority": 6, "pf": 130, "ps": 255, "sa": 0},
-      "direction": "MNU→模块",
+      "can_id_template": {"priority": 6, "pf": 130, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
       "cycle_ms": 0,
       "data_length": 8,
+      "tp": true,
       "stage": "定值",
-      "description": "查询模块定值参数",
+      "description": "查询模块定值参数，按传输协议传输",
       "fields": [
-        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
         {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
-        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
-        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "range": [1, 200], "required": true},
-        {"name": "预留", "byte_start": 5, "length": 3, "data_type": "int_le", "required": false}
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 2, "data_type": "int_le", "range": [1, 200], "required": true},
+        {"name": "预留", "byte_start": 6, "length": 1, "data_type": "int_le", "variable": true, "required": false}
       ]
     },
     {
       "name": "定值查询应答帧",
       "abbr": "PARAM_QUERY_RESP",
       "identifier": {"pf": 131},
-      "can_id_template": {"priority": 6, "pf": 131, "ps": 0, "sa": 255},
-      "direction": "模块→MNU",
+      "can_id_template": {"priority": 6, "pf": 131, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
       "cycle_ms": 0,
       "data_length": 8,
+      "tp": true,
       "stage": "定值",
       "fields": [
-        {"name": "接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
         {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
-        {"name": "设备通讯地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
-        {"name": "定值序号", "byte_start": 4, "length": 1, "data_type": "int_le", "required": true},
-        {"name": "定值信息", "byte_start": 5, "length": 3, "data_type": "int_le", "required": true}
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "定值序号", "byte_start": 4, "length": 2, "data_type": "int_le", "range": [1, 200], "required": true},
+        {"name": "成功标识", "byte_start": 6, "length": 1, "bit_start": 7, "bit_len": 1, "data_type": "bits", "enum": {"0": "失败", "1": "成功"}, "required": true},
+        {"name": "失败原因", "byte_start": 6, "length": 1, "bit_start": 0, "bit_len": 4, "data_type": "bits", "enum": {"0": "成功", "1": "无该定值", "2": "禁止读出", "3": "读出失败"}, "required": true},
+        {"name": "定值信息", "byte_start": 7, "length": 1, "data_type": "int_le", "variable": true, "description": "长度可变，取决于定值序号，参见附录A定值表", "required": true}
+      ]
+    },
+    {
+      "name": "升级心跳帧",
+      "abbr": "UPG_HEARTBEAT",
+      "identifier": {"pf": 112},
+      "can_id_template": {"priority": 4, "pf": 112, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 1000,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "心跳计数值", "byte_start": 3, "length": 2, "data_type": "int_le", "range": [0, 65535], "required": true}
+      ]
+    },
+    {
+      "name": "升级心跳应答帧",
+      "abbr": "UPG_HEARTBEAT_RESP",
+      "identifier": {"pf": 113},
+      "can_id_template": {"priority": 4, "pf": 113, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 1000,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "心跳计数值", "byte_start": 3, "length": 2, "data_type": "int_le", "range": [0, 65535], "required": true}
+      ]
+    },
+    {
+      "name": "启动下载命令帧",
+      "abbr": "UPG_START_DOWNLOAD",
+      "identifier": {"pf": 114},
+      "can_id_template": {"priority": 4, "pf": 114, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "程序内部编号", "byte_start": 4, "length": 1, "data_type": "int_le", "range": [0, 255], "required": true}
+      ]
+    },
+    {
+      "name": "启动下载应答帧",
+      "abbr": "UPG_START_DOWNLOAD_RESP",
+      "identifier": {"pf": 115},
+      "can_id_template": {"priority": 4, "pf": 115, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "确认标识", "byte_start": 4, "length": 1, "data_type": "int_le", "enum": {"0": "允许下载", "1": "禁止下载"}, "required": true},
+        {"name": "目标文件类型", "byte_start": 5, "length": 1, "data_type": "int_le", "enum": {"1": "英特尔HEX格式", "2": "tar.gz格式", "255": "其他类型"}, "required": true},
+        {"name": "校验方案", "byte_start": 6, "length": 1, "data_type": "int_le", "enum": {"1": "方案A(STM32F1)", "2": "方案B(标准CRC32)"}, "required": true},
+        {"name": "禁止下载原因", "byte_start": 7, "length": 1, "data_type": "int_le", "enum": {"0": "无", "1": "本身不支持此功能", "2": "数据合法性校验失败"}, "required": true}
+      ]
+    },
+    {
+      "name": "索要区间命令帧",
+      "abbr": "UPG_REQ_RANGE",
+      "identifier": {"pf": 116},
+      "can_id_template": {"priority": 4, "pf": 116, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 500,
+      "data_length": null,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "总字节数", "byte_start": 4, "length": 4, "data_type": "int_le", "description": "tar.gz 为源程序总字节数；HEX 格式固定为 0", "required": true}
+      ]
+    },
+    {
+      "name": "索要区间应答帧 1",
+      "abbr": "UPG_REQ_RANGE_RESP1",
+      "identifier": {"pf": 117},
+      "can_id_template": {"priority": 4, "pf": 117, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "应答帧类型", "byte_start": 4, "length": 1, "data_type": "int_le", "description": "固定为 1", "required": true},
+        {"name": "运行区起始地址", "byte_start": 5, "length": 4, "data_type": "int_le", "description": "tar.gz 固定为 0；HEX 回复运行区起始地址", "required": true}
+      ]
+    },
+    {
+      "name": "索要区间应答帧 2",
+      "abbr": "UPG_REQ_RANGE_RESP2",
+      "identifier": {"pf": 118},
+      "can_id_template": {"priority": 4, "pf": 118, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "应答帧类型", "byte_start": 4, "length": 1, "data_type": "int_le", "description": "固定为 2", "required": true},
+        {"name": "运行区尺寸", "byte_start": 5, "length": 4, "data_type": "int_le", "description": "tar.gz 回复源程序总字节数；HEX 回复运行区尺寸", "required": true}
+      ]
+    },
+    {
+      "name": "启动组包命令帧",
+      "abbr": "UPG_START_PACK",
+      "identifier": {"pf": 119},
+      "can_id_template": {"priority": 4, "pf": 119, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "分组首地址", "byte_start": 4, "length": 4, "data_type": "int_le", "description": "必须为 0x400 的倍数", "required": true}
+      ]
+    },
+    {
+      "name": "启动组包应答帧",
+      "abbr": "UPG_START_PACK_RESP",
+      "identifier": {"pf": 120},
+      "can_id_template": {"priority": 4, "pf": 120, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "分组首地址", "byte_start": 4, "length": 4, "data_type": "int_le", "description": "必须为 0x400 的倍数", "required": true}
+      ]
+    },
+    {
+      "name": "数据发送帧",
+      "abbr": "UPG_SEND_DATA",
+      "identifier": {"pf": 121},
+      "can_id_template": {"priority": 4, "pf": 121, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 10,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "包内第几条数据", "byte_start": 4, "length": 1, "data_type": "int_le", "range": [0, 255], "required": true},
+        {"name": "数据", "byte_start": 5, "length": 4, "data_type": "int_le", "required": true}
+      ]
+    },
+    {
+      "name": "完成组包数据帧",
+      "abbr": "UPG_FINISH_PACK",
+      "identifier": {"pf": 122},
+      "can_id_template": {"priority": 4, "pf": 122, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "整包校验码", "byte_start": 4, "length": 4, "data_type": "int_le", "required": true}
+      ]
+    },
+    {
+      "name": "完成组包应答帧",
+      "abbr": "UPG_FINISH_PACK_RESP",
+      "identifier": {"pf": 123},
+      "can_id_template": {"priority": 4, "pf": 123, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "校验结果", "byte_start": 4, "length": 1, "data_type": "int_le", "enum": {"85": "校验失败(0x55)", "170": "校验成功(0xAA)", "255": "擦除失败(0xFF)"}, "required": true},
+        {"name": "重新索要的首地址", "byte_start": 5, "length": 4, "data_type": "int_le", "description": "校验失败为重新索要首地址；校验成功为分组首地址；擦除失败填 0x00", "required": true}
+      ]
+    },
+    {
+      "name": "程序校验数据帧",
+      "abbr": "UPG_VERIFY",
+      "identifier": {"pf": 124},
+      "can_id_template": {"priority": 4, "pf": 124, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "程序校验码", "byte_start": 4, "length": 4, "data_type": "int_le", "required": true}
+      ]
+    },
+    {
+      "name": "程序校验应答帧",
+      "abbr": "UPG_VERIFY_RESP",
+      "identifier": {"pf": 125},
+      "can_id_template": {"priority": 4, "pf": 125, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "确认标识", "byte_start": 4, "length": 1, "data_type": "int_le", "enum": {"0": "成功", "1": "失败"}, "required": true}
+      ]
+    },
+    {
+      "name": "立即复位命令帧",
+      "abbr": "UPG_RESET",
+      "identifier": {"pf": 126},
+      "can_id_template": {"priority": 4, "pf": 126, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "重启命令", "byte_start": 4, "length": 1, "data_type": "int_le", "enum": {"170": "立即重启(0xAA)"}, "required": true}
+      ]
+    },
+    {
+      "name": "立即复位应答帧",
+      "abbr": "UPG_RESET_RESP",
+      "identifier": {"pf": 127},
+      "can_id_template": {"priority": 4, "pf": 127, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 500,
+      "data_length": 8,
+      "stage": "程序在线更新",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "确认标识", "byte_start": 4, "length": 1, "data_type": "int_le", "enum": {"170": "成功(0xAA)"}, "required": true}
+      ]
+    },
+    {
+      "name": "调试信息下行命令帧",
+      "abbr": "DEBUG_DOWN",
+      "identifier": {"pf": 142},
+      "can_id_template": {"priority": 6, "pf": 142, "ps": 159, "sa": 160},
+      "direction": "功率控制模块→充电模块",
+      "cycle_ms": 0,
+      "data_length": null,
+      "tp": true,
+      "stage": "调试信息",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "厂商自定义内容", "byte_start": 4, "length": 1, "data_type": "int_le", "description": "设备厂商自定义数据内容和格式（长度不定，此处占位）", "required": false}
+      ]
+    },
+    {
+      "name": "调试信息上行帧",
+      "abbr": "DEBUG_UP",
+      "identifier": {"pf": 143},
+      "can_id_template": {"priority": 6, "pf": 143, "ps": 160, "sa": 32},
+      "direction": "充电模块→功率控制模块",
+      "cycle_ms": 0,
+      "data_length": null,
+      "tp": true,
+      "stage": "调试信息",
+      "fields": [
+        {"name": "充电接口标识", "byte_start": 1, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "设备类型", "byte_start": 2, "length": 1, "data_type": "int_le", "enum": {"1": "直流充电控制器", "2": "交流充电控制器", "3": "功率控制模块", "4": "充电模块", "5": "开关模块"}, "required": true},
+        {"name": "设备通信地址", "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
+        {"name": "厂商自定义内容", "byte_start": 4, "length": 1, "data_type": "int_le", "description": "设备厂商自定义数据内容和格式（长度不定，此处占位）", "required": false}
       ]
     }
+  ],
+  "param_table": [
+    {"index": 1, "name": "设备型号", "format": "ascii", "length": 32, "attr": "必选/只读"},
+    {"index": 2, "name": "预留", "format": "int_le", "length": 2, "attr": ""},
+    {"index": 3, "name": "设备序列号", "format": "ascii", "length": 32, "attr": "必选/只读"},
+    {"index": 4, "name": "设备厂商编码", "format": "int_le", "length": 4, "attr": "必选/只读"},
+    {"index": 5, "name": "设备控制器硬件版本", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 6, "name": "设备控制器软件版本", "format": "int_le", "length": 3, "attr": "必选/只读"},
+    {"index": 7, "name": "设备控制器软件日期", "format": "int_le", "length": 4, "attr": "必选/只读"},
+    {"index": 8, "name": "设备控制器软件校验码", "format": "int_le", "length": 16, "attr": "必选/只读"},
+    {"index": 9, "name": "设备运行模式", "format": "int_le", "length": 1, "attr": "必选/读写"},
+    {"index": 10, "name": "设备通信地址", "format": "int_le", "length": 1, "attr": "必选"},
+    {"index": 11, "name": "设备通信超时时间", "format": "int_le", "length": 1, "attr": "必选/读写"},
+    {"index": 12, "name": "设备通信协议版本号", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 13, "name": "分组模式", "format": "int_le", "length": 1, "attr": "必选/读写"},
+    {"index": 14, "name": "输出电压范围是否分段", "format": "int_le", "length": 1, "attr": "必选/只读"},
+    {"index": 15, "name": "额定输出电压", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 16, "name": "额定输出电流", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 17, "name": "最高输出电压", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 18, "name": "最低输出电压", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 19, "name": "最大输出电流", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 20, "name": "最小输出电流", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 21, "name": "高电压段输出电压上限", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 22, "name": "高电压段输出电压下限", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 23, "name": "高电压段输出电压最大输出电流", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 24, "name": "高电压段输出电压最小输出电流", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 25, "name": "低电压段输出电压上限", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 26, "name": "低电压段输出电压下限", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 27, "name": "低电压段输出电压最大输出电流", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 28, "name": "低电压段输出电压最小输出电流", "format": "int_le", "length": 2, "attr": "可选/只读"},
+    {"index": 29, "name": "遥信遥测报文上送周期", "format": "int_le", "length": 1, "attr": "可选/读写"},
+    {"index": 30, "name": "预留", "format": "int_le", "length": 1, "attr": ""},
+    {"index": 31, "name": "给定电压", "format": "int_le", "length": 2, "attr": "可选/读写"},
+    {"index": 32, "name": "给定电流", "format": "int_le", "length": 2, "attr": "可选/读写"},
+    {"index": 33, "name": "高电压段-最高输出电压点", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 34, "name": "高电压段-最高输出电压点-输出电流值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 35, "name": "高电压段-恒功率输出下限电压点", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 36, "name": "高电压段-恒功率输出下限电压点-输出电流值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 37, "name": "高电压段-最大电流输出值-电压下限值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 38, "name": "高电压段-最大电流输出值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 39, "name": "高电压段-电压输出下限点", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 40, "name": "高电压段-电压输出下限点-输出电流值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 41, "name": "低电压段-最高输出电压点", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 42, "name": "低电压段-最高输出电压点-输出电流值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 43, "name": "低电压段-恒功率输出下限电压点", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 44, "name": "低电压段-恒功率输出下限电压点-输出电流值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 45, "name": "低电压段-最大电流输出值-电压下限值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 46, "name": "低电压段-最大电流输出值", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 47, "name": "低电压段-电压输出下限点", "format": "int_le", "length": 2, "attr": "必选/只读"},
+    {"index": 48, "name": "低电压段-电压输出下限点-输出电流值", "format": "int_le", "length": 2, "attr": "必选/只读"}
   ]
 }

@@ -42,7 +42,8 @@ class CanCodec:
             return self._unpack_int_le(field, data)
 
     def _unpack_int_le(self, field: FieldDef, data: bytes) -> Any:
-        raw = self._read_bytes_le(data, field.byte_start - 1, field.length)
+        length = self._eff_len(field, data)
+        raw = self._read_bytes_le(data, field.byte_start - 1, length, signed=field.signed)
         if field.enum:
             return {"value": raw, "label": field.enum.get(raw, str(raw))}
         if field.resolution is not None:
@@ -53,7 +54,7 @@ class CanCodec:
         return raw
 
     def _unpack_int_be(self, field: FieldDef, data: bytes) -> Any:
-        raw = self._read_bytes_be(data, field.byte_start - 1, field.length)
+        raw = self._read_bytes_be(data, field.byte_start - 1, field.length, signed=field.signed)
         if field.enum:
             return {"value": raw, "label": field.enum.get(raw, str(raw))}
         if field.resolution is not None:
@@ -97,20 +98,27 @@ class CanCodec:
     # ── 工具方法 ──────────────────────────────────
 
     @staticmethod
-    def _read_bytes_le(data: bytes, offset: int, length: int) -> int:
+    def _eff_len(field: FieldDef, data: bytes) -> int:
+        """字段有效长度: variable 字段占满从 byte_start 起的剩余数据"""
+        if field.variable:
+            return max(0, len(data) - (field.byte_start - 1))
+        return field.length
+
+    @staticmethod
+    def _read_bytes_le(data: bytes, offset: int, length: int, signed: bool = False) -> int:
         """从字节数组读取 Little-Endian 整数"""
         if offset + length > len(data):
             raise ValueError(f"数据不足: offset={offset}, length={length}, 数据长度={len(data)}")
         chunk = data[offset:offset + length]
-        return int.from_bytes(chunk, "little")
+        return int.from_bytes(chunk, "little", signed=signed)
 
     @staticmethod
-    def _read_bytes_be(data: bytes, offset: int, length: int) -> int:
+    def _read_bytes_be(data: bytes, offset: int, length: int, signed: bool = False) -> int:
         """从字节数组读取 Big-Endian 整数"""
         if offset + length > len(data):
             raise ValueError(f"数据不足: offset={offset}, length={length}, 数据长度={len(data)}")
         chunk = data[offset:offset + length]
-        return int.from_bytes(chunk, "big")
+        return int.from_bytes(chunk, "big", signed=signed)
 
     # ── 编码 ──────────────────────────────────────
 
@@ -276,6 +284,87 @@ class CanCodec:
             return bytes(result[:total_len])
         return bytes(result)
 
+    # ── 三统一自定义多帧 (MD 2.5) ──────────────
+
+    def sg_first_frame(self, pf: int, data: bytes) -> bool:
+        """判断是否三统一自定义多帧的首帧。
+
+        首帧特征: byte0=0x01, byte1=总帧数 k, byte2-3=有效数据长度 L (LE),
+        byte4-7=数据01-04。通过 L 与 k 的容量自洽性排除单帧误判。
+        """
+        cfg = self.protocol.transport or {}
+        if cfg.get("type") != "sg_sequence":
+            return False
+        if pf not in (cfg.get("applies_to_pf") or []):
+            return False
+        if len(data) < 4 or data[0] != 0x01:
+            return False
+        k = data[1]
+        if not (2 <= k <= cfg.get("max_frames", 32)):
+            return False
+        total = data[2] | (data[3] << 8)
+        if not (1 <= total <= 1785):
+            return False
+        mid = max(0, k - 2) * 7          # 中间帧容量
+        cap = 4 + mid + 5                # 首帧4 + 中间帧 + 末帧最多5
+        if total > cap:
+            return False
+        if total <= 4 + mid - 7:         # 用不到这么多帧 → 非首帧
+            return False
+        return True
+
+    @staticmethod
+    def sg_reassemble(frames: list) -> bytes:
+        """按序号 1..k 排列的帧序列重组有效数据。"""
+        if not frames:
+            return b""
+        first = frames[0]
+        total = first[2] | (first[3] << 8)
+        buf = bytearray(first[4:8])
+        for f in frames[1:-1]:
+            buf += f[1:8]
+        if len(frames) > 1:
+            remain = total - len(buf)
+            if remain > 0:
+                buf += frames[-1][1:1 + remain]
+        return bytes(buf[:total])
+
+    @staticmethod
+    def sg_verify(frames: list, assembled: bytes) -> bool:
+        """累加和校验: 总帧数 + 长度(2B) + 有效数据, 取低 16 位, 存于末帧。"""
+        if len(frames) < 2:
+            return True
+        first, last = frames[0], frames[-1]
+        k = first[1]
+        total = first[2] | (first[3] << 8)
+        expect = (k + (total & 0xFF) + ((total >> 8) & 0xFF) + sum(assembled)) & 0xFFFF
+        n = max(0, total - 4 - max(0, k - 2) * 7)   # 末帧有效数据字节数
+        pos = 1 + n
+        if pos + 1 >= len(last):
+            return False
+        got = last[pos] | (last[pos + 1] << 8)
+        return got == expect
+
+    def sg_split(self, data: bytes) -> list:
+        """三统一自定义多帧分包 (MD 2.5)。返回帧字节列表 (含首帧头、末帧校验)。"""
+        total = len(data)
+        k = 2
+        while total > 4 + max(0, k - 2) * 7 + 5 and k < 255:
+            k += 1
+        frames = []
+        f1 = bytearray([0x01, k, total & 0xFF, (total >> 8) & 0xFF])
+        f1 += bytes(data[:4]).ljust(4, b"\x00")
+        frames.append(bytes(f1))
+        off = 4
+        for seq in range(2, k):
+            chunk = bytes(data[off:off + 7]).ljust(7, b"\x00")
+            frames.append(bytes([seq]) + chunk)
+            off += 7
+        chk = (k + (total & 0xFF) + ((total >> 8) & 0xFF) + sum(data)) & 0xFFFF
+        last = bytearray([k]) + bytes(data[off:]) + bytes([chk & 0xFF, (chk >> 8) & 0xFF])
+        frames.append(bytes(last).ljust(8, b"\x00")[:8])
+        return frames
+
     def make_can_id(self, msg: MessageDef) -> int:
         """根据 MessageDef 的 can_id_template 构造 CAN ID"""
         t = msg.can_id_template
@@ -311,9 +400,9 @@ class CanCodec:
             raw = int(round((raw - (field.offset or 0)) / field.resolution + 1e-9))
         elif isinstance(raw, float):
             raw = int(round(raw))  # 无分辨率的浮点输入 → 整数
-        if raw < 0:
-            raw = 0  # 负值 clamp 到 0（无符号字节装不下）
-        return raw.to_bytes(field.length, "little")
+        if raw < 0 and not field.signed:
+            raw = 0  # 无符号字段负值 clamp 到 0（无符号字节装不下）
+        return raw.to_bytes(field.length, "little", signed=field.signed)
 
     def _pack_int_be(self, field: FieldDef, value: Any) -> bytes:
         raw = self._resolve_enum_value(field, value)
@@ -321,9 +410,9 @@ class CanCodec:
             raw = int(round((raw - (field.offset or 0)) / field.resolution + 1e-9))
         elif isinstance(raw, float):
             raw = int(round(raw))  # 无分辨率的浮点输入 → 整数
-        if raw < 0:
-            raw = 0  # 负值 clamp 到 0（无符号字节装不下）
-        return raw.to_bytes(field.length, "big")
+        if raw < 0 and not field.signed:
+            raw = 0  # 无符号字段负值 clamp 到 0（无符号字节装不下）
+        return raw.to_bytes(field.length, "big", signed=field.signed)
 
     def _pack_bcd(self, field: FieldDef, value: Any) -> bytes:
         """压缩 BCD 编码: 字符串 "13 20 15 11 10 20 19" → bytes"""

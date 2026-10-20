@@ -77,12 +77,14 @@ def _parse_protocol(raw: dict) -> ProtocolDefinition:
                     bit_start=f_raw.get("bit_start"),
                     bit_len=f_raw.get("bit_len"),
                     data_type=f_raw.get("data_type", "int_le"),
+                    signed=bool(f_raw.get("signed", False)),
                     resolution=f_raw.get("resolution"),
                     offset=f_raw.get("offset"),
                     unit=f_raw.get("unit"),
                     range_min=f_raw.get("range_min"),
                     range_max=f_raw.get("range_max"),
                     enum={int(k): v for k, v in f_raw.get("enum", {}).items()} if f_raw.get("enum") else None,
+                    variable=f_raw.get("variable", False),
                     required=f_raw.get("required", True),
                     editable=f_raw.get("editable", True),
                     default_value=f_raw.get("default_value"),
@@ -110,6 +112,7 @@ def _parse_protocol(raw: dict) -> ProtocolDefinition:
         message_matcher=message_matcher,
         message_groups=raw.get("message_groups", []),
         messages=messages,
+        transport=raw.get("transport", {}),
     )
 
 
@@ -205,15 +208,16 @@ def validate_integrity(protocol: ProtocolDefinition) -> list[str]:
                 seen[key] = msg.abbr
 
     elif matcher.type == "command_number":
-        seen: dict[int, str] = {}
+        seen: dict[tuple, str] = {}
         for msg in protocol.messages:
             cmd = msg.identifier.get("command_number")
             if cmd is not None:
-                if cmd in seen:
+                key = (cmd, msg.identifier.get("role", "req"))
+                if key in seen:
                     errors.append(
-                        f"CommandNumber 0x{cmd:02X} 重复: '{seen[cmd]}' 和 '{msg.abbr}'"
+                        f"CommandNumber 0x{cmd:02X}({key[1]}) 重复: '{seen[key]}' 和 '{msg.abbr}'"
                     )
-                seen[cmd] = msg.abbr
+                seen[key] = msg.abbr
 
     # ── 4. data_type 一致性 ──
     for msg in protocol.messages:

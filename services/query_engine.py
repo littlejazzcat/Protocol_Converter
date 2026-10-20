@@ -12,7 +12,7 @@ class QueryEngine:
         self.protocol = protocol
         self._by_abbr: Dict[str, MessageDef] = {}
         self._by_pf: Dict[int, MessageDef] = {}
-        self._by_command: Dict[int, MessageDef] = {}
+        self._by_command: Dict[tuple, MessageDef] = {}
         self._by_data_cmd: Dict[int, MessageDef] = {}
         self._init_index()
 
@@ -26,10 +26,11 @@ class QueryEngine:
             if pf is not None:
                 self._by_pf[pf] = msg
 
-            # command_number index (英飞源)
+            # command_number index (英飞源, 按 命令号+方向 索引)
             cmd = msg.identifier.get("command_number")
             if cmd is not None:
-                self._by_command[cmd] = msg
+                role = msg.identifier.get("role", "req")
+                self._by_command[(cmd, role)] = msg
 
             # data_field index (安世博: command_type)
             ct = msg.identifier.get("command_type")
@@ -48,8 +49,11 @@ class QueryEngine:
     def by_pf(self, pf: int) -> Optional[MessageDef]:
         return self._by_pf.get(pf)
 
-    def by_command(self, cmd: int) -> Optional[MessageDef]:
-        return self._by_command.get(cmd)
+    def by_command(self, cmd: int, role: str = "req") -> Optional[MessageDef]:
+        m = self._by_command.get((cmd, role))
+        if m is not None:
+            return m
+        return self._by_command.get((cmd, "resp" if role == "req" else "req"))
 
     def by_data_command(self, ct: int) -> Optional[MessageDef]:
         return self._by_data_cmd.get(ct)
@@ -61,7 +65,7 @@ class QueryEngine:
             return self.by_pf(pf)
         cmd = identifier.get("command_number")
         if cmd is not None:
-            return self.by_command(cmd)
+            return self.by_command(cmd, identifier.get("role", "req"))
         ct = identifier.get("command_type")
         if ct is not None:
             return self.by_data_command(ct)
@@ -80,7 +84,9 @@ class QueryEngine:
         elif matcher.type == "command_number":
             cmd = self._extract_can_id_field(can_id, "command_number")
             if cmd is not None:
-                return self.by_command(cmd)
+                src = self._extract_can_id_field(can_id, "source_addr")
+                role = "req" if (src is not None and 0xF0 <= src <= 0xF8) else "resp"
+                return self.by_command(cmd, role)
 
         elif matcher.type == "data_field" and data is not None and len(data) >= 2:
             cmd_byte = matcher.match_byte or 1

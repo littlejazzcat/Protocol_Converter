@@ -247,14 +247,13 @@
         {"name": "最高动力蓄电池温度检测点编号", "spn": 3087, "byte_start": 3, "length": 1, "data_type": "int_le", "required": true},
         {"name": "当前单体蓄电池最低温度", "spn": 3088, "byte_start": 4, "length": 1, "data_type": "int_le", "resolution": 1, "offset": -50.0, "unit": "℃", "range": [-50, 200], "required": true},
         {"name": "最低动力蓄电池温度检测点编号", "spn": 3089, "byte_start": 5, "length": 1, "data_type": "int_le", "required": true},
-        {"name": "单体电压过高", "spn": 3090, "byte_start": 6, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "不可信"}, "required": true},
-        {"name": "SOC过高", "spn": 3090, "byte_start": 6, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "不可信"}, "required": true},
-        {"name": "SOC过低", "spn": 3090, "byte_start": 6, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过低", "2": "不可信"}, "required": true},
-        {"name": "充电过流", "spn": 3093, "byte_start": 6, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过流", "2": "不可信"}, "required": true},
-        {"name": "温度过高", "spn": 3091, "byte_start": 7, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "不可信"}, "required": true},
-        {"name": "绝缘状态", "spn": 3092, "byte_start": 7, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
-        {"name": "连接状态", "spn": 3094, "byte_start": 7, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "故障", "2": "不可信"}, "required": true},
-        {"name": "充电允许", "spn": 3095, "byte_start": 7, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "禁止(暂停)", "1": "允许(恢复)", "2": "不可信"}, "required": true}
+        {"name": "单体蓄电池电压过高/过低", "spn": 3090, "byte_start": 6, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "过低"}, "required": true},
+        {"name": "动力蓄电池荷电状态SOC过高/过低", "spn": 3091, "byte_start": 6, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "过低"}, "required": true},
+        {"name": "动力蓄电池充电过电流", "spn": 3092, "byte_start": 6, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过流", "2": "不可信"}, "required": true},
+        {"name": "动力蓄电池温度过高", "spn": 3093, "byte_start": 6, "length": 1, "bit_start": 6, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "过高", "2": "不可信"}, "required": true},
+        {"name": "动力蓄电池绝缘状态", "spn": 3094, "byte_start": 7, "length": 1, "bit_start": 0, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "不正常", "2": "不可信"}, "required": true},
+        {"name": "动力蓄电池组输出连接器连接状态", "spn": 3095, "byte_start": 7, "length": 1, "bit_start": 2, "bit_len": 2, "data_type": "bits", "enum": {"0": "正常", "1": "不正常", "2": "不可信"}, "required": true},
+        {"name": "充电允许", "spn": 3096, "byte_start": 7, "length": 1, "bit_start": 4, "bit_len": 2, "data_type": "bits", "enum": {"0": "禁止(暂停)", "1": "允许(恢复)"}, "required": true}
       ]
     },
     {
