@@ -14,12 +14,14 @@ class FieldDef:
     bit_start: Optional[int] = None   # 位域起始位 (0-based, 仅 bit 类型)
     bit_len: Optional[int] = None     # 位域长度
     data_type: str = "int_le"         # int_le | int_be | float_ieee754 | bits | bcd | ascii
+    signed: bool = False              # 整数是否有符号 (int_le / int_be)
     resolution: Optional[float] = None
     offset: Optional[float] = None
     unit: Optional[str] = None
     range_min: Optional[float] = None
     range_max: Optional[float] = None
     enum: Optional[Dict[int, str]] = None     # 枚举值 → 描述
+    variable: bool = False                    # 长度可变 (占满剩余数据)
     required: bool = True
     editable: bool = True                     # 编码时是否可编辑 (False=锁定的身份字段)
     default_value: Any = None                 # 编码时的默认值 (用于保留字段等)
@@ -124,6 +126,7 @@ class ProtocolDefinition:
     message_matcher: MessageMatcher = field(default_factory=MessageMatcher)
     message_groups: List[Dict] = field(default_factory=list)
     messages: List[MessageDef] = field(default_factory=list)
+    transport: Dict[str, Any] = field(default_factory=dict)
 
     def get_message_by_abbr(self, abbr: str) -> Optional[MessageDef]:
         for m in self.messages:
@@ -136,3 +139,31 @@ class ProtocolDefinition:
             if m.identifier.get("pf") == pf:
                 return m
         return None
+
+
+def resolve_address_name(addresses: Dict[str, Dict], value: int) -> str:
+    """按地址表解析地址名。
+
+    匹配顺序:
+      1. 精确 value 命中 (如 0x9F 广播、0xA0 功控默认地址)
+      2. range 区间回退 (如 "0xA0~0xAE"、"0x20~0x9E")
+
+    未命中返回空串。
+    """
+    if not addresses:
+        return ""
+    for k, v in addresses.items():
+        if v.get("value") == value:
+            return v.get("name", k)
+    for k, v in addresses.items():
+        rng = v.get("range")
+        if not rng or "~" not in str(rng):
+            continue
+        try:
+            lo_s, hi_s = str(rng).split("~")
+            lo, hi = int(lo_s.strip(), 16), int(hi_s.strip(), 16)
+        except (ValueError, AttributeError):
+            continue
+        if lo <= value <= hi:
+            return v.get("name", k)
+    return ""

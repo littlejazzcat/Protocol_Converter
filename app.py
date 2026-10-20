@@ -11,13 +11,14 @@ from fastapi.responses import HTMLResponse, FileResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from models.loader import load_protocol
+from models.protocol import resolve_address_name
 from services.query_engine import QueryEngine
 from services.can_codec import CanCodec
 from services.excel_parser import ExcelParser
 
 # ── 初始化 ──────────────────────────────────────
 
-VERSION = "v1.2.0"
+VERSION = "v1.2.3"
 # 更新源（GitHub 与 Gitee 仓库名不同，各自配置）
 SOURCES = [
     {"name": "GitHub", "repo": "littlejazzcat/Protocol_Converter",
@@ -116,12 +117,25 @@ async def api_select_protocol(protocol_id: str = Form(...)):
     return {"ok": ok, "name": state["protocols"].get(protocol_id, "")}
 
 
+def _ident_text(m) -> str:
+    """报文标识的显示文本: PF / 命令号 / 命令类型, 按协议实际标识字段选取"""
+    ident = m.identifier
+    if ident.get("pf") is not None:
+        return f"0x{ident['pf']:02X}"
+    if ident.get("command_number") is not None:
+        return f"CMD{ident['command_number']}"
+    if ident.get("command_type") is not None:
+        return f"0x{ident['command_type']:02X}"
+    return "-"
+
+
 @app.get("/api/messages")
 async def api_messages(stage: str = "", keyword: str = ""):
     q = state["query"]
     msgs = q.search(keyword) if keyword else (q.by_stage(stage) if stage else q.all_messages())
     return [{"abbr": m.abbr, "name": m.name, "stage": m.stage,
-             "pf": m.identifier.get("pf"), "direction": m.direction,
+             "pf": m.identifier.get("pf"), "ident": _ident_text(m),
+             "direction": m.direction,
              "data_length": m.data_length, "tp": m.tp} for m in msgs]
 
 
@@ -135,7 +149,8 @@ async def api_messages_tree():
             msg = proto.get_message_by_abbr(abbr)
             if msg:
                 stage_msgs.append({"abbr": msg.abbr, "name": msg.name,
-                                   "pf": msg.identifier.get("pf")})
+                                   "pf": msg.identifier.get("pf"),
+                                   "ident": _ident_text(msg)})
         result.append({"name": group["name"], "messages": stage_msgs})
     return result
 
@@ -232,11 +247,21 @@ async def api_encode_build(msg_abbr: str = Form(...), field_values: str = Form("
     except Exception as e:
         return {"error": str(e)}
 
-    tp_frames = c.tp_split(msg, data, can_id) if msg.tp and msg.data_length and msg.data_length > 6 else []
+    tp_frames = []
+    if msg.tp and msg.data_length and msg.data_length > 6:
+        cfg = proto.transport or {}
+        pf = msg.identifier.get("pf")
+        if cfg.get("type") == "sg_sequence" and pf in (cfg.get("applies_to_pf") or []):
+            sg = c.sg_split(data)
+            for idx, fr in enumerate(sg, 1):
+                tp_frames.append({"id": f"{can_id:08X}", "data": fr.hex(" ").upper(),
+                                  "type": f"多帧 {idx}/{len(sg)}"})
+        else:
+            tp_frames = [{"id": f["can_id_hex"], "data": f["data_hex"], "type": f["type"]}
+                         for f in c.tp_split(msg, data, can_id)]
     return {"can_id": f"0x{can_id:08X}", "can_id_hex": f"{can_id:08X}",
             "data_hex": data.hex(" ").upper(),
-            "tp_frames": [{"id": f["can_id_hex"], "data": f["data_hex"], "type": f["type"]}
-                          for f in tp_frames]}
+            "tp_frames": tp_frames}
 
 
 # ── 批量解析 API ────────────────────────────────
@@ -445,13 +470,8 @@ def _get_direction_display(q, can_id, data, id_fields):
 
     sa = id_fields.get("sa", 0)
     ps = id_fields.get("ps", 0)
-    sa_name = ""
-    ps_name = ""
-    for k, v in addrs.items():
-        if v.get("value") == sa:
-            sa_name = v.get("name", k)
-        if v.get("value") == ps:
-            ps_name = v.get("name", k)
+    sa_name = resolve_address_name(addrs, sa)
+    ps_name = resolve_address_name(addrs, ps)
     if sa_name and ps_name:
         return f"{sa_name}→{ps_name}"
     return ""

@@ -144,7 +144,7 @@ async function loadTree(){
     const h=document.createElement('div');h.className='tree-stage';h.innerHTML='<span class="arr open">&#9654;</span><span class="sname">'+s.name+'</span><span class="badge">'+s.messages.length+'</span>';
     const c=document.createElement('div');
     s.messages.forEach(m=>{
-      const mi=document.createElement('div');mi.className='tree-msg';mi.innerHTML=is27930?'<span class="mabbr">'+m.abbr+'</span><span class="mname">'+m.name+'</span><span class="mpf">0x'+(m.pf?m.pf.toString(16):'-')+'</span>':'<span class="mname">'+m.name+'</span><span class="mabbr">['+m.abbr+']</span><span class="mpf">0x'+(m.pf?m.pf.toString(16):'-')+'</span>';
+      const mi=document.createElement('div');mi.className='tree-msg';mi.innerHTML=is27930?'<span class="mabbr">'+m.abbr+'</span><span class="mname">'+m.name+'</span><span class="mpf">'+m.ident+'</span>':'<span class="mname">'+m.name+'</span><span class="mpf">'+m.ident+'</span>';
       mi.onclick=(e)=>{e.stopPropagation();showDetail(m);document.querySelectorAll('.tree-msg').forEach(x=>x.classList.remove('active'));mi.classList.add('active')};c.appendChild(mi)
     });
     h.onclick=()=>{const v=c.style.display!=='block';c.style.display=v?'block':'none';h.querySelector('.arr').classList.toggle('open',v)};
@@ -155,7 +155,7 @@ async function showDetail(m){
   const r=await fetch('/api/messages?keyword='+m.abbr),msgs=await r.json();if(!msgs.length)return;
   const msg=msgs[0];const d=document.getElementById('detail-card');d.style.display='';
   document.getElementById('detail-title').textContent=msg.abbr+' — '+msg.name;
-  document.getElementById('detail-grid').innerHTML='<div><span class="lbl">方向</span><br><span class="val">'+msg.direction+'</span></div><div><span class="lbl">阶段</span><br><span class="val">'+msg.stage+'</span></div><div><span class="lbl">PF</span><br><span class="val mono">0x'+(msg.pf?msg.pf.toString(16):'-')+' ('+msg.pf+')</span></div><div><span class="lbl">数据长度</span><br><span class="val">'+msg.data_length+' bytes'+(msg.tp?' <span class="tag t-orange">TP</span>':'')+'</span></div>';
+  document.getElementById('detail-grid').innerHTML='<div><span class="lbl">方向</span><br><span class="val">'+msg.direction+'</span></div><div><span class="lbl">阶段</span><br><span class="val">'+msg.stage+'</span></div><div><span class="lbl">标识</span><br><span class="val mono">'+msg.ident+'</span></div><div><span class="lbl">数据长度</span><br><span class="val">'+msg.data_length+' bytes'+(msg.tp?' <span class="tag t-orange">TP</span>':'')+'</span></div>';
   document.getElementById('e-output').textContent='';document.getElementById('e-tp-out').innerHTML='';
   const er=await fetch('/api/encode',{method:'POST',body:new URLSearchParams({msg_abbr:m.abbr})});
   const enc=await er.json();
@@ -167,7 +167,7 @@ async function showDetail(m){
     document.getElementById('e-body').innerHTML=h;
   }
 }
-async function search(){const kw=document.getElementById('kw').value.trim();if(!kw)return;const r=await fetch('/api/messages?keyword='+kw),msgs=await r.json();document.getElementById('search-res').innerHTML=msgs.length?'<table><tr><th>缩写</th><th>名称</th><th>阶段</th><th>PF</th><th>方向</th></tr>'+msgs.map(m=>'<tr style="cursor:pointer" onclick="showDetail({abbr:\''+m.abbr+'\',pf:'+m.pf+'})"><td class="mono">'+m.abbr+'</td><td>'+m.name+'</td><td>'+m.stage+'</td><td class="mono">0x'+(m.pf?m.pf.toString(16):'')+'</td><td>'+m.direction+'</td></tr>').join('')+'</table>':'<div style="color:var(--muted);padding:16px;text-align:center">无匹配结果</div>'}
+async function search(){const kw=document.getElementById('kw').value.trim();if(!kw)return;const r=await fetch('/api/messages?keyword='+kw),msgs=await r.json();document.getElementById('search-res').innerHTML=msgs.length?'<table><tr><th>缩写</th><th>名称</th><th>阶段</th><th>标识</th><th>方向</th></tr>'+msgs.map(m=>'<tr style="cursor:pointer" onclick="showDetail({abbr:\''+m.abbr+'\'})"><td class="mono">'+m.abbr+'</td><td>'+m.name+'</td><td>'+m.stage+'</td><td class="mono">'+m.ident+'</td><td>'+m.direction+'</td></tr>').join('')+'</table>':'<div style="color:var(--muted);padding:16px;text-align:center">无匹配结果</div>'}
 async function doEncode(){
   if(!curEnc)return;const v={};document.querySelectorAll('#e-body input').forEach(i=>{v[i.dataset.n]=parseFloat(i.value)||0});
   const fd=new FormData();fd.append('msg_abbr',document.getElementById('detail-title').textContent.split(' — ')[0]);fd.append('field_values',JSON.stringify(v));
