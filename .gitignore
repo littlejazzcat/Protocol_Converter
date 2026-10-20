@@ -31,6 +31,11 @@ issue/
 update/
 需求/
 
+# 厂家私有协议定义（不随仓库公开）
+data/sg_unified_v107.json
+data/infypower_v107.json
+data/anshibo_1k040b.json
+
 # PyInstaller
 build/
 dist/
