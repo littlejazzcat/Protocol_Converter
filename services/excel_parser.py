@@ -12,6 +12,16 @@ from services.query_engine import QueryEngine
 from services.can_codec import CanCodec
 from models.protocol import MessageDef, resolve_address_name
 
+# XML 1.0 / openpyxl 不允许的控制字符
+_ILLEGAL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def _clean_cell(v):
+    """清除单元格中的非法控制字符，避免导出时抛 IllegalCharacterError"""
+    if isinstance(v, str):
+        return _ILLEGAL_CHARS.sub("", v)
+    return v
+
 
 class ExcelParser:
     """CAN 抓包批量解析器 (无 pandas 版)"""
@@ -277,7 +287,7 @@ class ExcelParser:
                         # RTS 帧 → 开新组（每轮传输一个组）
                         key = (sa, ps, i)
                         tp_groups[key] = {"rts": {"can_id": can_id, "data": data},
-                                          "dt_frames": [], "start_idx": i,
+                                          "dt_frames": {}, "start_idx": i,
                                           "keep_cols": {c: row.get(c, "") for c in keep_cols}}
                         self._cur_tp_key = key
                     elif pf == 0xEB and self._cur_tp_key is not None:
@@ -285,7 +295,8 @@ class ExcelParser:
                         k = self._cur_tp_key
                         if (k[0], k[1]) == (sa, ps) and k in tp_groups:
                             seq = data[0]
-                            tp_groups[k]["dt_frames"].append((seq, data))
+                            # 同序号帧可能是重传, 以最后一次为准, 避免重复拼接
+                            tp_groups[k]["dt_frames"][seq] = data
                     continue
 
                 # 三统一自定义多帧 (MD 2.5): 首帧开新组, 后续序号帧追加
@@ -329,8 +340,7 @@ class ExcelParser:
         for key, group in tp_groups.items():
             if not group["dt_frames"] or not group["rts"]:
                 continue
-            group["dt_frames"].sort(key=lambda x: x[0])
-            frames_data = [f[1] for f in group["dt_frames"]]
+            frames_data = [group["dt_frames"][s] for s in sorted(group["dt_frames"])]
             # 从 RTS 提取总长（标准 J1939: byte1-2 LE）
             rts_data = group["rts"]["data"]
             total_len = rts_data[1] | (rts_data[2] << 8)
@@ -438,7 +448,7 @@ class ExcelParser:
         display = orig_cols + ["CAN ID", "数据域", "CAN ID 解析", "报文", "解析结果"]
         ws.append(display)
         for r in self._results:
-            ws.append([r.get(c, "") for c in display])
+            ws.append([_clean_cell(r.get(c, "")) for c in display])
         wb.save(filepath)
 
     # ── 内部 ──────────────────────────────────────

@@ -105,7 +105,11 @@
         {"name": "电池组产权标识", "spn": 2573, "byte_start": 23, "length": 1, "data_type": "int_le", "enum": {"0": "租赁", "1": "车自有"}, "required": false},
         {"name": "预留", "spn": 2574, "byte_start": 24, "length": 1, "data_type": "int_le", "required": false},
         {"name": "扩展车辆识别码(EVIN)", "spn": 2575, "byte_start": 25, "length": 17, "data_type": "ascii", "required": false},
-        {"name": "车辆通信协议软件版本号", "spn": 2576, "byte_start": 42, "length": 8, "data_type": "int_le", "required": false}
+        {"name": "软件版本流水号", "spn": 2576, "byte_start": 42, "length": 1, "data_type": "int_le", "description": "01H~FFH，编译版本流水号", "required": false},
+        {"name": "软件编译日", "spn": 2576, "byte_start": 43, "length": 1, "data_type": "int_le", "description": "01H~1FH", "required": false},
+        {"name": "软件编译月", "spn": 2576, "byte_start": 44, "length": 1, "data_type": "int_le", "description": "01H~0CH", "required": false},
+        {"name": "软件编译年", "spn": 2576, "byte_start": 45, "length": 2, "data_type": "int_be", "description": "0001H~FFFEH，如 07DFH = 2015 年", "required": false},
+        {"name": "软件版本预留", "spn": 2576, "byte_start": 47, "length": 3, "data_type": "int_le", "description": "填 FFFFFFH", "required": false}
       ]
     },
     {

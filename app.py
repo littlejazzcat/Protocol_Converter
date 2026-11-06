@@ -8,6 +8,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Request, File, UploadFile, Form
 from fastapi.responses import HTMLResponse, FileResponse
+from starlette.background import BackgroundTask
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from models.loader import load_protocol
@@ -18,7 +19,7 @@ from services.excel_parser import ExcelParser
 
 # ── 初始化 ──────────────────────────────────────
 
-VERSION = "v1.2.3"
+VERSION = "v1.2.4"
 # 更新源（GitHub 与 Gitee 仓库名不同，各自配置）
 SOURCES = [
     {"name": "GitHub", "repo": "littlejazzcat/Protocol_Converter",
@@ -59,6 +60,7 @@ state = {
         "anshibo_1k040b": "安世博 UAA-1K040B-E",
         "sg_unified_v107": "三统一 V107",
         "infypower_v107": "英飞源 V107",
+        "tonghe_v12": "通合 V1.2",
     },
     "parse_results": [],
 }
@@ -335,11 +337,19 @@ def api_parse_run():
 @app.get("/api/parse/export")
 def api_parse_export():
     parser = state["parser"]
+    if not getattr(parser, "_results", None):
+        return {"error": "没有可导出的解析结果，请先执行解析"}
     fd, path = tempfile.mkstemp(suffix=".xlsx")
     os.close(fd)
-    parser.export(path)
-    return FileResponse(path, filename="parsed_result.xlsx",
-                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    try:
+        parser.export(path)
+    except Exception as e:
+        return {"error": f"导出失败: {type(e).__name__}: {e}"}
+    return FileResponse(
+        path, filename="parsed_result.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        background=BackgroundTask(os.remove, path),
+    )
 
 
 # ── 自更新 API ──────────────────────────────────

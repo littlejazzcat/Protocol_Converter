@@ -35,6 +35,7 @@ update/
 data/sg_unified_v107.json
 data/infypower_v107.json
 data/anshibo_1k040b.json
+data/tonghe_v12.json
 
 # PyInstaller
 build/
