@@ -54,6 +54,7 @@ input,select,textarea,button{font-family:inherit;font-size:12.5px}input,select{b
   <div style="overflow-y:auto;flex:1;padding-right:4px">
     <div class="card" id="detail-card" style="display:none">
       <h2 id="detail-title">报文详情</h2>
+      <div id="detail-canid" style="display:none;font-size:12.5px;color:var(--muted);margin:-6px 0 10px"></div>
       <div class="detail-grid" id="detail-grid"></div>
       <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
         <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">字段定义</div>
@@ -159,8 +160,13 @@ async function showDetail(m){
   document.getElementById('e-output').textContent='';document.getElementById('e-tp-out').innerHTML='';
   const er=await fetch('/api/encode',{method:'POST',body:new URLSearchParams({msg_abbr:m.abbr})});
   const enc=await er.json();
+  const cidEl=document.getElementById('detail-canid');
   if(!enc.error){
     curEnc=enc;
+    if(CUR==='gbt27930_v1.1'){
+      cidEl.style.display='';
+      cidEl.innerHTML='CAN ID&nbsp;&nbsp;<span class="mono" style="color:var(--accent);font-weight:600">'+enc.can_id+'</span>';
+    }else{cidEl.style.display='none';}
     document.getElementById('detail-fields').innerHTML=enc.fields.map(f=>'<div style="font-size:11.5px"><span class="mono" style="color:var(--accent)">'+f.name+'</span> <span style="color:var(--muted)">B'+f.byte_start+'('+f.length+') '+f.data_type+(f.unit?' '+f.unit:'')+'</span>'+(f.spn?' <small>SPN:'+f.spn+'</small>':'')+'</div>').join('');
     const defv=f=>{if(f.default_value!==null&&f.default_value!==undefined&&f.default_value!=='')return f.default_value;if(f.offset&&f.offset!==0)return f.offset;if(f.enum&&Object.keys(f.enum).length)return Object.keys(f.enum)[0];return 0};
     let h='';enc.fields.forEach(f=>{const lk=!f.editable;h+='<tr><td class="mono">'+f.name+(f.spn?' <small style="color:var(--muted)">SPN:'+f.spn+'</small>':'')+'</td><td>B'+f.byte_start+'('+f.length+')</td><td class="mono">'+f.data_type+(f.resolution?' ×'+f.resolution:'')+'</td><td>'+(f.unit||'—')+'</td><td><input type="text" value="'+defv(f)+'" style="width:70px" data-n="'+f.name+'"'+(lk?' class="locked" readonly':'')+'></td></tr>'});
