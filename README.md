@@ -120,8 +120,7 @@ protocol_converter/
 ├── update/                   版本变更记录
 ├── issue/                    问题记录
 ├── tests/                    测试与真实抓包样本
-└── 需求/                     需求文档
+
 ```
 
-想了解内部实现，看 `architecture/protocol_converter-v1.2.md`。
-想知道每个版本改了什么，看 `update/` 下的日志。
+
