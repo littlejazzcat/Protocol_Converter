@@ -110,17 +110,3 @@ python main.py
 
 ---
 
-## 目录说明
-
-```
-protocol_converter/
-├── ProtocolConverter.exe     主程序（打包后）
-├── data/                     协议定义 JSON（唯一事实来源）
-├── architecture/             架构文档
-├── update/                   版本变更记录
-├── issue/                    问题记录
-├── tests/                    测试与真实抓包样本
-
-```
-
-
